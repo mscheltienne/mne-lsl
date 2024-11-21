@@ -239,6 +239,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contribution guide</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../development/changes/index.html">Changelog</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Changelog</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../development/changes/1.7.html">Version 1.7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../development/changes/1.6.html">Version 1.6</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../development/changes/1.5.html">Version 1.5</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../development/changes/1.4.html">Version 1.4</a></li>
@@ -292,11 +293,10 @@
 <h1>Install<a class="headerlink" href="#install" title="Link to this heading">🔗</a></h1>
 <section id="default-install">
 <h2>Default install<a class="headerlink" href="#default-install" title="Link to this heading">🔗</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">MNE-LSL</span></code> requires Python version <code class="docutils literal notranslate"><span class="pre">3.9</span></code> or higher and is available on
+<p><code class="docutils literal notranslate"><span class="pre">MNE-LSL</span></code> requires Python version <code class="docutils literal notranslate"><span class="pre">3.10</span></code> or higher and is available on
 <a class="reference external" href="https://pypi.org/project/mne-lsl/">PyPI</a> and <a class="reference external" href="https://anaconda.org/conda-forge/mne-lsl">conda-forge</a>. It requires
-<a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> which will be either fetch from the path in the environment
-variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_LIB</span></code> (or <code class="docutils literal notranslate"><span class="pre">PYLSL_LIB</span></code>), or from the system directories, or
-downloaded from the release page on compatible platforms.</p>
+<a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> which will be either fetched from the <code class="docutils literal notranslate"><span class="pre">mne-lsl</span></code> install or from
+the path in the environment variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_LIB</span></code> (or <code class="docutils literal notranslate"><span class="pre">PYLSL_LIB</span></code>).</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" for="sd-tab-item-0">
@@ -325,8 +325,16 @@ Conda</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" for="sd-tab-item-3">
 Source</label><div class="sd-tab-content docutils">
-<p><code class="docutils literal notranslate"><span class="pre">mne-lsl</span></code> can be installed from <a class="reference external" href="https://github.com/mne-tools/mne-lsl">GitHub</a>:</p>
+<p><code class="docutils literal notranslate"><span class="pre">mne-lsl</span></code> can be installed from <a class="reference external" href="https://github.com/mne-tools/mne-lsl">GitHub</a> or from the Source
+distribution. In this case, the installation will build <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a>.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/mne-tools/mne-lsl
+</pre></div>
+</div>
+<p>If you wish to skip building <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a>, you can set the environment
+variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_SKIP_LIBLSL_BUILD</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code> before running the installation,
+and use the environment variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_LIB</span></code> or <code class="docutils literal notranslate"><span class="pre">PYLSL_LIB</span></code> to specify the
+path to the <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> library on your system.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span><span class="nv">MNE_LSL_SKIP_LIBLSL_BUILD</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/mne-tools/mne-lsl
 </pre></div>
 </div>
 </div>
@@ -334,14 +342,16 @@ Source</label><div class="sd-tab-content docutils">
 </section>
 <section id="different-liblsl-version">
 <h2>Different liblsl version<a class="headerlink" href="#different-liblsl-version" title="Link to this heading">🔗</a></h2>
-<p>If you prefer to use a different version of <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> than the
-automatically downloaded one, or if your platform is not supported, you can build
-<a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> from source and provide the path to the library in an
-environment variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_LIB</span></code> (or <code class="docutils literal notranslate"><span class="pre">PYLSL_LIB</span></code>).</p>
+<p>If you prefer to use a different version of <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> than the bundled one,
+or if your platform is not supported, you can build <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> from source and
+provide the path to the library in an environment variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_LIB</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">PYLSL_LIB</span></code>).</p>
+<p>In this case, you can skip the build of <a class="reference external" href="https://github.com/sccn/liblsl">liblsl</a> during the installation of
+<code class="docutils literal notranslate"><span class="pre">mne-lsl</span></code> by setting the environment variable <code class="docutils literal notranslate"><span class="pre">MNE_LSL_SKIP_LIBLSL_BUILD</span></code> to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
 </section>
 <section id="liblsl-and-labrecorder-dependencies">
 <h2>liblsl and LabRecorder dependencies<a class="headerlink" href="#liblsl-and-labrecorder-dependencies" title="Link to this heading">🔗</a></h2>
-<p>On Linux, <code class="docutils literal notranslate"><span class="pre">liblsl</span></code> requires <code class="docutils literal notranslate"><span class="pre">libpugixml-dev</span></code> and <code class="docutils literal notranslate"><span class="pre">LabRecorder</span></code> requires
+<p>On Linux, <code class="docutils literal notranslate"><span class="pre">liblsl</span></code> might requires <code class="docutils literal notranslate"><span class="pre">libpugixml-dev</span></code> and <code class="docutils literal notranslate"><span class="pre">LabRecorder</span></code> requires
 <code class="docutils literal notranslate"><span class="pre">qt6-base-dev</span></code> and <code class="docutils literal notranslate"><span class="pre">freeglut3-dev</span></code>.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>libpugixml-dev<span class="w"> </span>qt6-base-dev<span class="w"> </span>freeglut3-dev
 </pre></div>
@@ -439,7 +449,7 @@ with <code class="docutils literal notranslate"><span class="pre">PyQt5</span></
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=cd9de7ed"></script>
+</div><script src="../_static/documentation_options.js?v=030dc6f6"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=5fa4622c"></script>

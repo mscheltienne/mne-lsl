@@ -346,8 +346,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header general-b5784f5e-b5cd-439f-8ad7-a089c35945d3"  title="Hide section" 
-        onclick="toggleVisibility('general-b5784f5e-b5cd-439f-8ad7-a089c35945d3')">
+    <tr class="repr-section-header general-70ae280a-4ed2-4f34-b8de-ac633807d19d"  title="Hide section" 
+        onclick="toggleVisibility('general-70ae280a-4ed2-4f34-b8de-ac633807d19d')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -359,26 +359,26 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
         </th>
     </tr>
 
-    <tr class="repr-element general-b5784f5e-b5cd-439f-8ad7-a089c35945d3 ">
+    <tr class="repr-element general-70ae280a-4ed2-4f34-b8de-ac633807d19d ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-b5784f5e-b5cd-439f-8ad7-a089c35945d3 ">
+    <tr class="repr-element general-70ae280a-4ed2-4f34-b8de-ac633807d19d ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-b5784f5e-b5cd-439f-8ad7-a089c35945d3 ">
+    <tr class="repr-element general-70ae280a-4ed2-4f34-b8de-ac633807d19d ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-b5784f5e-b5cd-439f-8ad7-a089c35945d3 ">
+    <tr class="repr-element general-70ae280a-4ed2-4f34-b8de-ac633807d19d ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -393,8 +393,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header acquisition-5b98a9c6-6464-4379-90d1-f477b7a26e91" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-5b98a9c6-6464-4379-90d1-f477b7a26e91')">
+    <tr class="repr-section-header acquisition-5532dab5-301e-4a3c-b949-0257ce0ebce8" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-5532dab5-301e-4a3c-b949-0257ce0ebce8')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -413,7 +413,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-element acquisition-5b98a9c6-6464-4379-90d1-f477b7a26e91 ">
+    <tr class="repr-element acquisition-5532dab5-301e-4a3c-b949-0257ce0ebce8 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1000.00 Hz</td>
@@ -429,8 +429,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header channels-13998810-fe58-4648-93a3-7b9041755c5e"  title="Hide section" 
-        onclick="toggleVisibility('channels-13998810-fe58-4648-93a3-7b9041755c5e')">
+    <tr class="repr-section-header channels-2bf21e5c-a552-4d51-b236-af7a1719965e"  title="Hide section" 
+        onclick="toggleVisibility('channels-2bf21e5c-a552-4d51-b236-af7a1719965e')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -443,7 +443,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
     </tr>
 
 
-    <tr class="repr-element channels-13998810-fe58-4648-93a3-7b9041755c5e ">
+    <tr class="repr-element channels-2bf21e5c-a552-4d51-b236-af7a1719965e ">
         <td class="repr-section-toggle-col"></td>
         <td>misc</td>
         <td>
@@ -456,7 +456,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
     </tr>
 
 
-    <tr class="repr-element channels-13998810-fe58-4648-93a3-7b9041755c5e ">
+    <tr class="repr-element channels-2bf21e5c-a552-4d51-b236-af7a1719965e ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -471,8 +471,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header filters-7b3c4dcf-3c62-4146-8182-37caa0a1743d"  title="Hide section" 
-        onclick="toggleVisibility('filters-7b3c4dcf-3c62-4146-8182-37caa0a1743d')">
+    <tr class="repr-section-header filters-2ae962e4-bece-4f73-b5d6-caeabcd828a5"  title="Hide section" 
+        onclick="toggleVisibility('filters-2ae962e4-bece-4f73-b5d6-caeabcd828a5')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -484,14 +484,14 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
         </th>
     </tr>
 
-    <tr class="repr-element filters-7b3c4dcf-3c62-4146-8182-37caa0a1743d ">
+    <tr class="repr-element filters-2ae962e4-bece-4f73-b5d6-caeabcd828a5 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-7b3c4dcf-3c62-4146-8182-37caa0a1743d ">
+    <tr class="repr-element filters-2ae962e4-bece-4f73-b5d6-caeabcd828a5 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>500.00 Hz</td>
@@ -677,8 +677,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header general-0e2f11e5-b557-491a-8e6d-c3b843911642"  title="Hide section" 
-        onclick="toggleVisibility('general-0e2f11e5-b557-491a-8e6d-c3b843911642')">
+    <tr class="repr-section-header general-d79500f9-6747-452a-a1e7-e4de3dc2c142"  title="Hide section" 
+        onclick="toggleVisibility('general-d79500f9-6747-452a-a1e7-e4de3dc2c142')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -690,26 +690,26 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
         </th>
     </tr>
 
-    <tr class="repr-element general-0e2f11e5-b557-491a-8e6d-c3b843911642 ">
+    <tr class="repr-element general-d79500f9-6747-452a-a1e7-e4de3dc2c142 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-0e2f11e5-b557-491a-8e6d-c3b843911642 ">
+    <tr class="repr-element general-d79500f9-6747-452a-a1e7-e4de3dc2c142 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-0e2f11e5-b557-491a-8e6d-c3b843911642 ">
+    <tr class="repr-element general-d79500f9-6747-452a-a1e7-e4de3dc2c142 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-0e2f11e5-b557-491a-8e6d-c3b843911642 ">
+    <tr class="repr-element general-d79500f9-6747-452a-a1e7-e4de3dc2c142 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -724,8 +724,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header acquisition-64dda312-53ff-4e48-a9ef-ae1a225a7da0" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-64dda312-53ff-4e48-a9ef-ae1a225a7da0')">
+    <tr class="repr-section-header acquisition-b67f96cb-7306-46f2-9517-29481d74043b" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-b67f96cb-7306-46f2-9517-29481d74043b')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -744,7 +744,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-element acquisition-64dda312-53ff-4e48-a9ef-ae1a225a7da0 ">
+    <tr class="repr-element acquisition-b67f96cb-7306-46f2-9517-29481d74043b ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>0.00 Hz</td>
@@ -760,8 +760,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header channels-0a6adb78-cfb9-47c5-9bf9-901eeae1cb3f"  title="Hide section" 
-        onclick="toggleVisibility('channels-0a6adb78-cfb9-47c5-9bf9-901eeae1cb3f')">
+    <tr class="repr-section-header channels-56cd699a-0efa-44c4-8e46-67ec3e10b830"  title="Hide section" 
+        onclick="toggleVisibility('channels-56cd699a-0efa-44c4-8e46-67ec3e10b830')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -774,7 +774,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
     </tr>
 
 
-    <tr class="repr-element channels-0a6adb78-cfb9-47c5-9bf9-901eeae1cb3f ">
+    <tr class="repr-element channels-56cd699a-0efa-44c4-8e46-67ec3e10b830 ">
         <td class="repr-section-toggle-col"></td>
         <td>misc</td>
         <td>
@@ -787,7 +787,7 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
     </tr>
 
 
-    <tr class="repr-element channels-0a6adb78-cfb9-47c5-9bf9-901eeae1cb3f ">
+    <tr class="repr-element channels-56cd699a-0efa-44c4-8e46-67ec3e10b830 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -802,8 +802,8 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
 
 
 
-    <tr class="repr-section-header filters-e7687707-08f0-421d-88fc-a4f1cb17fc39"  title="Hide section" 
-        onclick="toggleVisibility('filters-e7687707-08f0-421d-88fc-a4f1cb17fc39')">
+    <tr class="repr-section-header filters-d35899e0-962a-48b2-98da-2d43bf743a97"  title="Hide section" 
+        onclick="toggleVisibility('filters-d35899e0-962a-48b2-98da-2d43bf743a97')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -815,14 +815,14 @@ We can now acquire both streams with 2 :class:`~mne_lsl.stream.StreamLSL` object
         </th>
     </tr>
 
-    <tr class="repr-element filters-e7687707-08f0-421d-88fc-a4f1cb17fc39 ">
+    <tr class="repr-element filters-d35899e0-962a-48b2-98da-2d43bf743a97 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-e7687707-08f0-421d-88fc-a4f1cb17fc39 ">
+    <tr class="repr-element filters-d35899e0-962a-48b2-98da-2d43bf743a97 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>0.00 Hz</td>
@@ -920,7 +920,7 @@ receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | tutorial-annots (source: 80cc141f58f9470c804a04d92de1c260)>
+    <Stream: OFF | tutorial-annots (source: 9fe7a73005514b2faf3ffde30b960bc2)>
 
 
 
@@ -940,7 +940,7 @@ receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | tutorial-annots-annotations (source: 80cc141f58f9470c804a04d92de1c260)>
+    <Stream: OFF | tutorial-annots-annotations (source: 9fe7a73005514b2faf3ffde30b960bc2)>
 
 
 
@@ -966,9 +966,9 @@ receive new data from an LSL stream.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 10.202 seconds)
+   **Total running time of the script:** (0 minutes 10.199 seconds)
 
-**Estimated memory usage:**  183 MB
+**Estimated memory usage:**  195 MB
 
 
 .. _sphx_glr_download_generated_tutorials_20_player_annotations.py:

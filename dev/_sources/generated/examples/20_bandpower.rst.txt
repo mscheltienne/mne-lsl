@@ -217,8 +217,8 @@ rolling window. For this example, we will look at the alpha band power, between 
 
 
 
-    <tr class="repr-section-header general-cd0471e1-5c0c-41f6-9f42-486c6108f133"  title="Hide section" 
-        onclick="toggleVisibility('general-cd0471e1-5c0c-41f6-9f42-486c6108f133')">
+    <tr class="repr-section-header general-e8424772-33ab-4f3a-98d3-a2f00e730c7c"  title="Hide section" 
+        onclick="toggleVisibility('general-e8424772-33ab-4f3a-98d3-a2f00e730c7c')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -230,7 +230,7 @@ rolling window. For this example, we will look at the alpha band power, between 
         </th>
     </tr>
 
-    <tr class="repr-element general-cd0471e1-5c0c-41f6-9f42-486c6108f133 ">
+    <tr class="repr-element general-e8424772-33ab-4f3a-98d3-a2f00e730c7c ">
         <td class="repr-section-toggle-col"></td>
         <td>Filename(s)</td>
         <td>
@@ -241,26 +241,26 @@ rolling window. For this example, we will look at the alpha band power, between 
         </td>
     </tr>
 
-    <tr class="repr-element general-cd0471e1-5c0c-41f6-9f42-486c6108f133 ">
+    <tr class="repr-element general-e8424772-33ab-4f3a-98d3-a2f00e730c7c ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Raw</td>
     </tr>
-    <tr class="repr-element general-cd0471e1-5c0c-41f6-9f42-486c6108f133 ">
+    <tr class="repr-element general-e8424772-33ab-4f3a-98d3-a2f00e730c7c ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-cd0471e1-5c0c-41f6-9f42-486c6108f133 ">
+    <tr class="repr-element general-e8424772-33ab-4f3a-98d3-a2f00e730c7c ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-cd0471e1-5c0c-41f6-9f42-486c6108f133 ">
+    <tr class="repr-element general-e8424772-33ab-4f3a-98d3-a2f00e730c7c ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -275,8 +275,8 @@ rolling window. For this example, we will look at the alpha band power, between 
 
 
 
-    <tr class="repr-section-header acquisition-87163efd-ee92-4f5e-b50f-0566084bd8e1" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-87163efd-ee92-4f5e-b50f-0566084bd8e1')">
+    <tr class="repr-section-header acquisition-289d0253-a50d-4e5b-92b3-b0da6ea8e153" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-289d0253-a50d-4e5b-92b3-b0da6ea8e153')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -288,7 +288,7 @@ rolling window. For this example, we will look at the alpha band power, between 
         </th>
     </tr>
 
-    <tr class="repr-element acquisition-87163efd-ee92-4f5e-b50f-0566084bd8e1 ">
+    <tr class="repr-element acquisition-289d0253-a50d-4e5b-92b3-b0da6ea8e153 ">
         <td class="repr-section-toggle-col"></td>
         <td>Duration</td>
         <td>00:00:20 (HH:MM:SS)</td>
@@ -301,14 +301,14 @@ rolling window. For this example, we will look at the alpha band power, between 
 
 
 
-    <tr class="repr-element acquisition-87163efd-ee92-4f5e-b50f-0566084bd8e1 ">
+    <tr class="repr-element acquisition-289d0253-a50d-4e5b-92b3-b0da6ea8e153 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element acquisition-87163efd-ee92-4f5e-b50f-0566084bd8e1 ">
+    <tr class="repr-element acquisition-289d0253-a50d-4e5b-92b3-b0da6ea8e153 ">
         <td class="repr-section-toggle-col"></td>
         <td>Time points</td>
         <td>20,481</td>
@@ -323,8 +323,8 @@ rolling window. For this example, we will look at the alpha band power, between 
 
 
 
-    <tr class="repr-section-header channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf"  title="Hide section" 
-        onclick="toggleVisibility('channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf')">
+    <tr class="repr-section-header channels-93fc22b9-fa41-471d-b407-92c38a749bd0"  title="Hide section" 
+        onclick="toggleVisibility('channels-93fc22b9-fa41-471d-b407-92c38a749bd0')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -337,7 +337,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -350,7 +350,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>EOG</td>
         <td>
@@ -363,7 +363,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>ECG</td>
         <td>
@@ -376,7 +376,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -389,7 +389,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Galvanic skin response</td>
         <td>
@@ -402,7 +402,7 @@ rolling window. For this example, we will look at the alpha band power, between 
     </tr>
 
 
-    <tr class="repr-element channels-46f39073-ed88-4f6c-9bb2-6cc7d06962cf ">
+    <tr class="repr-element channels-93fc22b9-fa41-471d-b407-92c38a749bd0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -417,8 +417,8 @@ rolling window. For this example, we will look at the alpha band power, between 
 
 
 
-    <tr class="repr-section-header filters-2ce5e188-9916-4fcd-9e60-40fceb2cbc1c"  title="Hide section" 
-        onclick="toggleVisibility('filters-2ce5e188-9916-4fcd-9e60-40fceb2cbc1c')">
+    <tr class="repr-section-header filters-b4b32cea-83f7-4148-8486-b80d8872ce50"  title="Hide section" 
+        onclick="toggleVisibility('filters-b4b32cea-83f7-4148-8486-b80d8872ce50')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -430,14 +430,14 @@ rolling window. For this example, we will look at the alpha band power, between 
         </th>
     </tr>
 
-    <tr class="repr-element filters-2ce5e188-9916-4fcd-9e60-40fceb2cbc1c ">
+    <tr class="repr-element filters-b4b32cea-83f7-4148-8486-b80d8872ce50 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-2ce5e188-9916-4fcd-9e60-40fceb2cbc1c ">
+    <tr class="repr-element filters-b4b32cea-83f7-4148-8486-b80d8872ce50 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -804,9 +804,9 @@ method on a separate loop.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 49.008 seconds)
+   **Total running time of the script:** (0 minutes 49.237 seconds)
 
-**Estimated memory usage:**  185 MB
+**Estimated memory usage:**  212 MB
 
 
 .. _sphx_glr_download_generated_examples_20_bandpower.py:

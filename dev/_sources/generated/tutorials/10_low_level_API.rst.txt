@@ -154,7 +154,7 @@ network. This operation is commonly named the stream resolution.
       | Sampling: 1024.0 Hz
       | Number of channels: 3
       | Data type: <class 'numpy.float32'>
-      | Source: ac54c9d1893d4a84a0076cd22212e265
+      | Source: e3ff7a8217474cde87990999ab94675d
 
 
 
@@ -444,8 +444,8 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
 
 
 
-    <tr class="repr-section-header general-da49cd03-a66e-4634-b13f-1e9840ddf001"  title="Hide section" 
-        onclick="toggleVisibility('general-da49cd03-a66e-4634-b13f-1e9840ddf001')">
+    <tr class="repr-section-header general-75ecdfd6-e9e4-468f-840e-dce39efa957e"  title="Hide section" 
+        onclick="toggleVisibility('general-75ecdfd6-e9e4-468f-840e-dce39efa957e')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -457,26 +457,26 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
         </th>
     </tr>
 
-    <tr class="repr-element general-da49cd03-a66e-4634-b13f-1e9840ddf001 ">
+    <tr class="repr-element general-75ecdfd6-e9e4-468f-840e-dce39efa957e ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-da49cd03-a66e-4634-b13f-1e9840ddf001 ">
+    <tr class="repr-element general-75ecdfd6-e9e4-468f-840e-dce39efa957e ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-da49cd03-a66e-4634-b13f-1e9840ddf001 ">
+    <tr class="repr-element general-75ecdfd6-e9e4-468f-840e-dce39efa957e ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-da49cd03-a66e-4634-b13f-1e9840ddf001 ">
+    <tr class="repr-element general-75ecdfd6-e9e4-468f-840e-dce39efa957e ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -491,8 +491,8 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
 
 
 
-    <tr class="repr-section-header acquisition-5b6f8354-09e2-42a2-a9f1-3fb47ced92d6" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-5b6f8354-09e2-42a2-a9f1-3fb47ced92d6')">
+    <tr class="repr-section-header acquisition-78b88a69-484c-4eab-9ec0-5635598b8173" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-78b88a69-484c-4eab-9ec0-5635598b8173')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -511,7 +511,7 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
 
 
 
-    <tr class="repr-element acquisition-5b6f8354-09e2-42a2-a9f1-3fb47ced92d6 ">
+    <tr class="repr-element acquisition-78b88a69-484c-4eab-9ec0-5635598b8173 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
@@ -527,8 +527,8 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
 
 
 
-    <tr class="repr-section-header channels-74883bd3-21cf-449a-a32c-8b01a479710c"  title="Hide section" 
-        onclick="toggleVisibility('channels-74883bd3-21cf-449a-a32c-8b01a479710c')">
+    <tr class="repr-section-header channels-5200f31b-df4c-44f6-83d0-0997f4135606"  title="Hide section" 
+        onclick="toggleVisibility('channels-5200f31b-df4c-44f6-83d0-0997f4135606')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -541,7 +541,7 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
     </tr>
 
 
-    <tr class="repr-element channels-74883bd3-21cf-449a-a32c-8b01a479710c ">
+    <tr class="repr-element channels-5200f31b-df4c-44f6-83d0-0997f4135606 ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -554,7 +554,7 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
     </tr>
 
 
-    <tr class="repr-element channels-74883bd3-21cf-449a-a32c-8b01a479710c ">
+    <tr class="repr-element channels-5200f31b-df4c-44f6-83d0-0997f4135606 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -569,8 +569,8 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
 
 
 
-    <tr class="repr-section-header filters-34860952-092a-4d04-80f8-fe70b21d1e1a"  title="Hide section" 
-        onclick="toggleVisibility('filters-34860952-092a-4d04-80f8-fe70b21d1e1a')">
+    <tr class="repr-section-header filters-2901fa0a-0ce8-4740-8b43-52079b2bf904"  title="Hide section" 
+        onclick="toggleVisibility('filters-2901fa0a-0ce8-4740-8b43-52079b2bf904')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -582,14 +582,14 @@ names are replaced by the channel numbers similarly to :func:`mne.create_info`.
         </th>
     </tr>
 
-    <tr class="repr-element filters-34860952-092a-4d04-80f8-fe70b21d1e1a ">
+    <tr class="repr-element filters-2901fa0a-0ce8-4740-8b43-52079b2bf904 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-34860952-092a-4d04-80f8-fe70b21d1e1a ">
+    <tr class="repr-element filters-2901fa0a-0ce8-4740-8b43-52079b2bf904 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -689,9 +689,9 @@ local timestamp can be compared with the LSL timestamp from acquired data.
 
  .. code-block:: none
 
-    Timestamp of the acquired data: 662.365027026
-    Current time: 662.549853548
-    Delta: 0.1848265219999803 seconds
+    Timestamp of the acquired data: 246.154387847
+    Current time: 246.340162714
+    Delta: 0.18577486699999213 seconds
 
 
 
@@ -722,9 +722,9 @@ When you are done with a :class:`~mne_lsl.lsl.StreamInlet` or
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.240 seconds)
+   **Total running time of the script:** (0 minutes 3.249 seconds)
 
-**Estimated memory usage:**  187 MB
+**Estimated memory usage:**  197 MB
 
 
 .. _sphx_glr_download_generated_tutorials_10_low_level_API.py:

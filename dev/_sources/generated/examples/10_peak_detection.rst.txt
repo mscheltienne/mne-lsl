@@ -221,8 +221,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header general-2df60abd-c210-4611-957b-32476a47437e"  title="Hide section" 
-        onclick="toggleVisibility('general-2df60abd-c210-4611-957b-32476a47437e')">
+    <tr class="repr-section-header general-22f35d6a-e335-4ec4-9490-94680c9b5d15"  title="Hide section" 
+        onclick="toggleVisibility('general-22f35d6a-e335-4ec4-9490-94680c9b5d15')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -234,7 +234,7 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element general-2df60abd-c210-4611-957b-32476a47437e ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Filename(s)</td>
         <td>
@@ -245,26 +245,26 @@ reliably with :func:`scipy.signal.find_peaks`.
         </td>
     </tr>
 
-    <tr class="repr-element general-2df60abd-c210-4611-957b-32476a47437e ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Raw</td>
     </tr>
-    <tr class="repr-element general-2df60abd-c210-4611-957b-32476a47437e ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-2df60abd-c210-4611-957b-32476a47437e ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-2df60abd-c210-4611-957b-32476a47437e ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -279,8 +279,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header acquisition-9d0fde15-f03a-4193-9532-0213bf45e46e" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-9d0fde15-f03a-4193-9532-0213bf45e46e')">
+    <tr class="repr-section-header acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -292,7 +292,7 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element acquisition-9d0fde15-f03a-4193-9532-0213bf45e46e ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Duration</td>
         <td>00:02:25 (HH:MM:SS)</td>
@@ -305,14 +305,14 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-element acquisition-9d0fde15-f03a-4193-9532-0213bf45e46e ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element acquisition-9d0fde15-f03a-4193-9532-0213bf45e46e ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Time points</td>
         <td>148,477</td>
@@ -327,8 +327,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header channels-53fd053d-b9c3-4a7d-a4a6-7de685dc632b"  title="Hide section" 
-        onclick="toggleVisibility('channels-53fd053d-b9c3-4a7d-a4a6-7de685dc632b')">
+    <tr class="repr-section-header channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2"  title="Hide section" 
+        onclick="toggleVisibility('channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -341,7 +341,7 @@ reliably with :func:`scipy.signal.find_peaks`.
     </tr>
 
 
-    <tr class="repr-element channels-53fd053d-b9c3-4a7d-a4a6-7de685dc632b ">
+    <tr class="repr-element channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>misc</td>
         <td>
@@ -354,7 +354,7 @@ reliably with :func:`scipy.signal.find_peaks`.
     </tr>
 
 
-    <tr class="repr-element channels-53fd053d-b9c3-4a7d-a4a6-7de685dc632b ">
+    <tr class="repr-element channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -369,8 +369,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header filters-ecc885aa-0f4c-4565-8080-90924b105bff"  title="Hide section" 
-        onclick="toggleVisibility('filters-ecc885aa-0f4c-4565-8080-90924b105bff')">
+    <tr class="repr-section-header filters-67f42796-c4c0-458b-8777-d76cf3f17eca"  title="Hide section" 
+        onclick="toggleVisibility('filters-67f42796-c4c0-458b-8777-d76cf3f17eca')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -382,14 +382,14 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element filters-ecc885aa-0f4c-4565-8080-90924b105bff ">
+    <tr class="repr-element filters-67f42796-c4c0-458b-8777-d76cf3f17eca ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-ecc885aa-0f4c-4565-8080-90924b105bff ">
+    <tr class="repr-element filters-67f42796-c4c0-458b-8777-d76cf3f17eca ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -974,9 +974,9 @@ real-time application.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 38.046 seconds)
+   **Total running time of the script:** (0 minutes 38.110 seconds)
 
-**Estimated memory usage:**  180 MB
+**Estimated memory usage:**  190 MB
 
 
 .. _sphx_glr_download_generated_examples_10_peak_detection.py:

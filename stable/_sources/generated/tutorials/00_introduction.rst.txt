@@ -307,8 +307,8 @@ file is reached.
 
 
 
-    <tr class="repr-section-header general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e"  title="Hide section" 
-        onclick="toggleVisibility('general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e')">
+    <tr class="repr-section-header general-847bf389-e0cf-49f7-9c82-8719237179a8"  title="Hide section" 
+        onclick="toggleVisibility('general-847bf389-e0cf-49f7-9c82-8719237179a8')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -320,26 +320,26 @@ file is reached.
         </th>
     </tr>
 
-    <tr class="repr-element general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e ">
+    <tr class="repr-element general-847bf389-e0cf-49f7-9c82-8719237179a8 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e ">
+    <tr class="repr-element general-847bf389-e0cf-49f7-9c82-8719237179a8 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e ">
+    <tr class="repr-element general-847bf389-e0cf-49f7-9c82-8719237179a8 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-c54b64ac-82ab-4854-8cd2-faa6a1faf02e ">
+    <tr class="repr-element general-847bf389-e0cf-49f7-9c82-8719237179a8 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -354,8 +354,8 @@ file is reached.
 
 
 
-    <tr class="repr-section-header acquisition-54112ee6-fdf8-4d51-8111-2d7358bdad5c" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-54112ee6-fdf8-4d51-8111-2d7358bdad5c')">
+    <tr class="repr-section-header acquisition-95990f13-8ad3-40cc-b880-7c49ee241292" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-95990f13-8ad3-40cc-b880-7c49ee241292')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -374,7 +374,7 @@ file is reached.
 
 
 
-    <tr class="repr-element acquisition-54112ee6-fdf8-4d51-8111-2d7358bdad5c ">
+    <tr class="repr-element acquisition-95990f13-8ad3-40cc-b880-7c49ee241292 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
@@ -390,8 +390,8 @@ file is reached.
 
 
 
-    <tr class="repr-section-header channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e"  title="Hide section" 
-        onclick="toggleVisibility('channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e')">
+    <tr class="repr-section-header channels-ea9b3993-b31f-407b-9a52-830b79636874"  title="Hide section" 
+        onclick="toggleVisibility('channels-ea9b3993-b31f-407b-9a52-830b79636874')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -404,7 +404,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -417,7 +417,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>EOG</td>
         <td>
@@ -430,7 +430,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>ECG</td>
         <td>
@@ -443,7 +443,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -456,7 +456,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>Galvanic skin response</td>
         <td>
@@ -469,7 +469,7 @@ file is reached.
     </tr>
 
 
-    <tr class="repr-element channels-ec18ac6b-b45c-4b38-8a58-ee1eca1af83e ">
+    <tr class="repr-element channels-ea9b3993-b31f-407b-9a52-830b79636874 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -484,8 +484,8 @@ file is reached.
 
 
 
-    <tr class="repr-section-header filters-9e131312-00a1-4a60-9f1a-d822d62e4b0d"  title="Hide section" 
-        onclick="toggleVisibility('filters-9e131312-00a1-4a60-9f1a-d822d62e4b0d')">
+    <tr class="repr-section-header filters-734d1f4d-736c-4483-8a9d-1d9b027ea2f1"  title="Hide section" 
+        onclick="toggleVisibility('filters-734d1f4d-736c-4483-8a9d-1d9b027ea2f1')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -497,14 +497,14 @@ file is reached.
         </th>
     </tr>
 
-    <tr class="repr-element filters-9e131312-00a1-4a60-9f1a-d822d62e4b0d ">
+    <tr class="repr-element filters-734d1f4d-736c-4483-8a9d-1d9b027ea2f1 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-9e131312-00a1-4a60-9f1a-d822d62e4b0d ">
+    <tr class="repr-element filters-734d1f4d-736c-4483-8a9d-1d9b027ea2f1 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -752,8 +752,8 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
 
 
 
-    <tr class="repr-section-header general-af82a0b2-95ed-4c34-bacb-aec2a8d94980"  title="Hide section" 
-        onclick="toggleVisibility('general-af82a0b2-95ed-4c34-bacb-aec2a8d94980')">
+    <tr class="repr-section-header general-a289aa70-ea47-4de6-b6b1-431890c9c37f"  title="Hide section" 
+        onclick="toggleVisibility('general-a289aa70-ea47-4de6-b6b1-431890c9c37f')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -765,26 +765,26 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
         </th>
     </tr>
 
-    <tr class="repr-element general-af82a0b2-95ed-4c34-bacb-aec2a8d94980 ">
+    <tr class="repr-element general-a289aa70-ea47-4de6-b6b1-431890c9c37f ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-af82a0b2-95ed-4c34-bacb-aec2a8d94980 ">
+    <tr class="repr-element general-a289aa70-ea47-4de6-b6b1-431890c9c37f ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-af82a0b2-95ed-4c34-bacb-aec2a8d94980 ">
+    <tr class="repr-element general-a289aa70-ea47-4de6-b6b1-431890c9c37f ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-af82a0b2-95ed-4c34-bacb-aec2a8d94980 ">
+    <tr class="repr-element general-a289aa70-ea47-4de6-b6b1-431890c9c37f ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -799,8 +799,8 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
 
 
 
-    <tr class="repr-section-header acquisition-3c2127ed-1455-4056-a943-965a9d70e6ee" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-3c2127ed-1455-4056-a943-965a9d70e6ee')">
+    <tr class="repr-section-header acquisition-cae0ad11-d01c-4a57-84fc-33a923a16523" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-cae0ad11-d01c-4a57-84fc-33a923a16523')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -819,7 +819,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
 
 
 
-    <tr class="repr-element acquisition-3c2127ed-1455-4056-a943-965a9d70e6ee ">
+    <tr class="repr-element acquisition-cae0ad11-d01c-4a57-84fc-33a923a16523 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
@@ -835,8 +835,8 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
 
 
 
-    <tr class="repr-section-header channels-31dd1b00-5527-4417-9247-98689c1fbff7"  title="Hide section" 
-        onclick="toggleVisibility('channels-31dd1b00-5527-4417-9247-98689c1fbff7')">
+    <tr class="repr-section-header channels-5e845020-19f6-41b1-a6a5-010e5be60954"  title="Hide section" 
+        onclick="toggleVisibility('channels-5e845020-19f6-41b1-a6a5-010e5be60954')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -849,7 +849,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -862,7 +862,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>EOG</td>
         <td>
@@ -875,7 +875,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>ECG</td>
         <td>
@@ -888,7 +888,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -901,7 +901,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>Galvanic skin response</td>
         <td>
@@ -914,7 +914,7 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
     </tr>
 
 
-    <tr class="repr-element channels-31dd1b00-5527-4417-9247-98689c1fbff7 ">
+    <tr class="repr-element channels-5e845020-19f6-41b1-a6a5-010e5be60954 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -929,8 +929,8 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
 
 
 
-    <tr class="repr-section-header filters-942be92c-24ec-4ce4-b9a6-ae0c7f90f7c2"  title="Hide section" 
-        onclick="toggleVisibility('filters-942be92c-24ec-4ce4-b9a6-ae0c7f90f7c2')">
+    <tr class="repr-section-header filters-f6264114-1b9a-4923-aa43-6deff6765c58"  title="Hide section" 
+        onclick="toggleVisibility('filters-f6264114-1b9a-4923-aa43-6deff6765c58')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -942,14 +942,14 @@ connection with the method :meth:`mne_lsl.stream.StreamLSL.connect`.
         </th>
     </tr>
 
-    <tr class="repr-element filters-942be92c-24ec-4ce4-b9a6-ae0c7f90f7c2 ">
+    <tr class="repr-element filters-f6264114-1b9a-4923-aa43-6deff6765c58 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-942be92c-24ec-4ce4-b9a6-ae0c7f90f7c2 ">
+    <tr class="repr-element filters-f6264114-1b9a-4923-aa43-6deff6765c58 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -1181,8 +1181,8 @@ which will reduce the ring buffer to 64 channels.
 
 
 
-    <tr class="repr-section-header general-67ca5da2-e137-4410-bedb-3c17d4047276"  title="Hide section" 
-        onclick="toggleVisibility('general-67ca5da2-e137-4410-bedb-3c17d4047276')">
+    <tr class="repr-section-header general-734a4eda-8d69-466a-9e51-fb97c11c62d0"  title="Hide section" 
+        onclick="toggleVisibility('general-734a4eda-8d69-466a-9e51-fb97c11c62d0')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1194,26 +1194,26 @@ which will reduce the ring buffer to 64 channels.
         </th>
     </tr>
 
-    <tr class="repr-element general-67ca5da2-e137-4410-bedb-3c17d4047276 ">
+    <tr class="repr-element general-734a4eda-8d69-466a-9e51-fb97c11c62d0 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-67ca5da2-e137-4410-bedb-3c17d4047276 ">
+    <tr class="repr-element general-734a4eda-8d69-466a-9e51-fb97c11c62d0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-67ca5da2-e137-4410-bedb-3c17d4047276 ">
+    <tr class="repr-element general-734a4eda-8d69-466a-9e51-fb97c11c62d0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-67ca5da2-e137-4410-bedb-3c17d4047276 ">
+    <tr class="repr-element general-734a4eda-8d69-466a-9e51-fb97c11c62d0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -1228,8 +1228,8 @@ which will reduce the ring buffer to 64 channels.
 
 
 
-    <tr class="repr-section-header acquisition-63097f47-b2d3-4702-a828-3356284f5ff9" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-63097f47-b2d3-4702-a828-3356284f5ff9')">
+    <tr class="repr-section-header acquisition-afd812db-ff1d-4077-8e1a-926d84c06e43" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-afd812db-ff1d-4077-8e1a-926d84c06e43')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1248,7 +1248,7 @@ which will reduce the ring buffer to 64 channels.
 
 
 
-    <tr class="repr-element acquisition-63097f47-b2d3-4702-a828-3356284f5ff9 ">
+    <tr class="repr-element acquisition-afd812db-ff1d-4077-8e1a-926d84c06e43 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
@@ -1264,8 +1264,8 @@ which will reduce the ring buffer to 64 channels.
 
 
 
-    <tr class="repr-section-header channels-6ba644b2-b6fd-4dd5-bac5-8feff8b99d3d"  title="Hide section" 
-        onclick="toggleVisibility('channels-6ba644b2-b6fd-4dd5-bac5-8feff8b99d3d')">
+    <tr class="repr-section-header channels-960b8908-2f22-4a1b-bdab-02206d846baa"  title="Hide section" 
+        onclick="toggleVisibility('channels-960b8908-2f22-4a1b-bdab-02206d846baa')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1278,7 +1278,7 @@ which will reduce the ring buffer to 64 channels.
     </tr>
 
 
-    <tr class="repr-element channels-6ba644b2-b6fd-4dd5-bac5-8feff8b99d3d ">
+    <tr class="repr-element channels-960b8908-2f22-4a1b-bdab-02206d846baa ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -1291,7 +1291,7 @@ which will reduce the ring buffer to 64 channels.
     </tr>
 
 
-    <tr class="repr-element channels-6ba644b2-b6fd-4dd5-bac5-8feff8b99d3d ">
+    <tr class="repr-element channels-960b8908-2f22-4a1b-bdab-02206d846baa ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -1306,8 +1306,8 @@ which will reduce the ring buffer to 64 channels.
 
 
 
-    <tr class="repr-section-header filters-d0c1e522-f09d-4a20-b800-a2aec7a7cf26"  title="Hide section" 
-        onclick="toggleVisibility('filters-d0c1e522-f09d-4a20-b800-a2aec7a7cf26')">
+    <tr class="repr-section-header filters-c5e8d518-7208-4fdf-b539-8ee262f3deb3"  title="Hide section" 
+        onclick="toggleVisibility('filters-c5e8d518-7208-4fdf-b539-8ee262f3deb3')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1319,14 +1319,14 @@ which will reduce the ring buffer to 64 channels.
         </th>
     </tr>
 
-    <tr class="repr-element filters-d0c1e522-f09d-4a20-b800-a2aec7a7cf26 ">
+    <tr class="repr-element filters-c5e8d518-7208-4fdf-b539-8ee262f3deb3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-d0c1e522-f09d-4a20-b800-a2aec7a7cf26 ">
+    <tr class="repr-element filters-c5e8d518-7208-4fdf-b539-8ee262f3deb3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -1421,7 +1421,7 @@ to continuously mock an LSL stream or receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | MNE-LSL-Player (source: ea585f35fc494fdbb12231a710d71445)>
+    <Stream: OFF | MNE-LSL-Player (source: 2e412306d31b4b1389ea36aeffd2092d)>
 
 
 
@@ -1440,16 +1440,16 @@ to continuously mock an LSL stream or receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Player: MNE-LSL-Player | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/sample-ant-raw.fif>
+    <Player: MNE-LSL-Player | OFF | /home/runner/mne_data/MNE-LSL-data/sample/sample-ant-raw.fif>
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.760 seconds)
+   **Total running time of the script:** (0 minutes 5.560 seconds)
 
-**Estimated memory usage:**  271 MB
+**Estimated memory usage:**  290 MB
 
 
 .. _sphx_glr_download_generated_tutorials_00_introduction.py:

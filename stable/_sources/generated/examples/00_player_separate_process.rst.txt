@@ -64,7 +64,7 @@ hogging all of the CPU resources, leaving almost nothing for the
  .. code-block:: none
 
 
-    <Player: example-process | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/sample-ecg-raw.fif>
+    <Player: example-process | OFF | /home/runner/mne_data/MNE-LSL-data/sample/sample-ecg-raw.fif>
 
 
 
@@ -117,7 +117,7 @@ while loop without any idle time).
  .. code-block:: none
 
     Elapsed time (free time): 3.00 s
-    Elapsed time (hogging): 3.00 s
+    Elapsed time (hogging): 2.98 s
 
 
 
@@ -249,9 +249,9 @@ be used to interrupt the player process from the main process.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 9.598 seconds)
+   **Total running time of the script:** (0 minutes 9.718 seconds)
 
-**Estimated memory usage:**  173 MB
+**Estimated memory usage:**  186 MB
 
 
 .. _sphx_glr_download_generated_examples_00_player_separate_process.py:

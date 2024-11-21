@@ -234,8 +234,8 @@ network.
 
 
 
-    <tr class="repr-section-header general-7b35695e-1ae6-4b71-b707-347d0c53773d"  title="Hide section" 
-        onclick="toggleVisibility('general-7b35695e-1ae6-4b71-b707-347d0c53773d')">
+    <tr class="repr-section-header general-c60ab034-f995-42c7-b85c-be3fc63839d3"  title="Hide section" 
+        onclick="toggleVisibility('general-c60ab034-f995-42c7-b85c-be3fc63839d3')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -247,26 +247,26 @@ network.
         </th>
     </tr>
 
-    <tr class="repr-element general-7b35695e-1ae6-4b71-b707-347d0c53773d ">
+    <tr class="repr-element general-c60ab034-f995-42c7-b85c-be3fc63839d3 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-7b35695e-1ae6-4b71-b707-347d0c53773d ">
+    <tr class="repr-element general-c60ab034-f995-42c7-b85c-be3fc63839d3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-7b35695e-1ae6-4b71-b707-347d0c53773d ">
+    <tr class="repr-element general-c60ab034-f995-42c7-b85c-be3fc63839d3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-7b35695e-1ae6-4b71-b707-347d0c53773d ">
+    <tr class="repr-element general-c60ab034-f995-42c7-b85c-be3fc63839d3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -281,8 +281,8 @@ network.
 
 
 
-    <tr class="repr-section-header acquisition-885e89d6-a23e-4221-8822-b400c5aff1b2" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-885e89d6-a23e-4221-8822-b400c5aff1b2')">
+    <tr class="repr-section-header acquisition-0e604183-cabd-400f-8c44-5c49a7676234" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-0e604183-cabd-400f-8c44-5c49a7676234')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -301,7 +301,7 @@ network.
 
 
 
-    <tr class="repr-element acquisition-885e89d6-a23e-4221-8822-b400c5aff1b2 ">
+    <tr class="repr-element acquisition-0e604183-cabd-400f-8c44-5c49a7676234 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
@@ -317,8 +317,8 @@ network.
 
 
 
-    <tr class="repr-section-header channels-6cb58ad9-4df2-4376-9c83-98a436b79b28"  title="Hide section" 
-        onclick="toggleVisibility('channels-6cb58ad9-4df2-4376-9c83-98a436b79b28')">
+    <tr class="repr-section-header channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd"  title="Hide section" 
+        onclick="toggleVisibility('channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -331,7 +331,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>EEG</td>
         <td>
@@ -344,7 +344,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>EOG</td>
         <td>
@@ -357,7 +357,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>ECG</td>
         <td>
@@ -370,7 +370,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -383,7 +383,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>Galvanic skin response</td>
         <td>
@@ -396,7 +396,7 @@ network.
     </tr>
 
 
-    <tr class="repr-element channels-6cb58ad9-4df2-4376-9c83-98a436b79b28 ">
+    <tr class="repr-element channels-a40eb058-5d0e-4050-80fd-4ebe19acdbbd ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -411,8 +411,8 @@ network.
 
 
 
-    <tr class="repr-section-header filters-6df14d17-5958-4a0f-b816-772489c494a2"  title="Hide section" 
-        onclick="toggleVisibility('filters-6df14d17-5958-4a0f-b816-772489c494a2')">
+    <tr class="repr-section-header filters-4d1a0893-9d69-4ac7-b7fc-328177b2e42f"  title="Hide section" 
+        onclick="toggleVisibility('filters-4d1a0893-9d69-4ac7-b7fc-328177b2e42f')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -424,14 +424,14 @@ network.
         </th>
     </tr>
 
-    <tr class="repr-element filters-6df14d17-5958-4a0f-b816-772489c494a2 ">
+    <tr class="repr-element filters-4d1a0893-9d69-4ac7-b7fc-328177b2e42f ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-6df14d17-5958-4a0f-b816-772489c494a2 ">
+    <tr class="repr-element filters-4d1a0893-9d69-4ac7-b7fc-328177b2e42f ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -471,7 +471,7 @@ network.
 
     New samples acquired: 3200
 
-    <Stream: OFF | MNE-LSL-Player (source: a14a3b85ac164add9e45c341c55c8e86)>
+    <Stream: OFF | MNE-LSL-Player (source: 2d3dce2138e34729828c4423ff735df3)>
 
 
 
@@ -572,7 +572,7 @@ to continuously mock an LSL stream or receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | MNE-LSL-Player (source: a14a3b85ac164add9e45c341c55c8e86)>
+    <Stream: OFF | MNE-LSL-Player (source: 2d3dce2138e34729828c4423ff735df3)>
 
 
 
@@ -591,16 +591,16 @@ to continuously mock an LSL stream or receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Player: MNE-LSL-Player | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/sample-ant-raw.fif>
+    <Player: MNE-LSL-Player | OFF | /home/runner/mne_data/MNE-LSL-data/sample/sample-ant-raw.fif>
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 12.451 seconds)
+   **Total running time of the script:** (0 minutes 12.609 seconds)
 
-**Estimated memory usage:**  269 MB
+**Estimated memory usage:**  277 MB
 
 
 .. _sphx_glr_download_generated_tutorials_30_stream_manual.py:

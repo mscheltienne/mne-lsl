@@ -260,8 +260,8 @@ channel of MNE's sample dataset.
 
 
 
-    <tr class="repr-section-header general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616"  title="Hide section" 
-        onclick="toggleVisibility('general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616')">
+    <tr class="repr-section-header general-952847bf-f9c0-4357-8010-0deab3087d00"  title="Hide section" 
+        onclick="toggleVisibility('general-952847bf-f9c0-4357-8010-0deab3087d00')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -273,26 +273,26 @@ channel of MNE's sample dataset.
         </th>
     </tr>
 
-    <tr class="repr-element general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616 ">
+    <tr class="repr-element general-952847bf-f9c0-4357-8010-0deab3087d00 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616 ">
+    <tr class="repr-element general-952847bf-f9c0-4357-8010-0deab3087d00 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>2002-12-03 at 19:01:10 UTC</td>
     
     </tr>
-    <tr class="repr-element general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616 ">
+    <tr class="repr-element general-952847bf-f9c0-4357-8010-0deab3087d00 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-eb68e1aa-4dc3-4d6b-be73-a04f817cc616 ">
+    <tr class="repr-element general-952847bf-f9c0-4357-8010-0deab3087d00 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -307,8 +307,8 @@ channel of MNE's sample dataset.
 
 
 
-    <tr class="repr-section-header acquisition-be75c84d-8e77-4534-9b43-65e709eab50e" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-be75c84d-8e77-4534-9b43-65e709eab50e')">
+    <tr class="repr-section-header acquisition-db3be6f3-b173-4329-b08d-9bbb99ebd2ef" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-db3be6f3-b173-4329-b08d-9bbb99ebd2ef')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -327,7 +327,7 @@ channel of MNE's sample dataset.
 
 
 
-    <tr class="repr-element acquisition-be75c84d-8e77-4534-9b43-65e709eab50e ">
+    <tr class="repr-element acquisition-db3be6f3-b173-4329-b08d-9bbb99ebd2ef ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -343,8 +343,8 @@ channel of MNE's sample dataset.
 
 
 
-    <tr class="repr-section-header channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1"  title="Hide section" 
-        onclick="toggleVisibility('channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1')">
+    <tr class="repr-section-header channels-6102d42d-dea7-4fe1-91c3-fca03648b262"  title="Hide section" 
+        onclick="toggleVisibility('channels-6102d42d-dea7-4fe1-91c3-fca03648b262')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -357,7 +357,7 @@ channel of MNE's sample dataset.
     </tr>
 
 
-    <tr class="repr-element channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1 ">
+    <tr class="repr-element channels-6102d42d-dea7-4fe1-91c3-fca03648b262 ">
         <td class="repr-section-toggle-col"></td>
         <td>Magnetometers</td>
         <td>
@@ -370,7 +370,7 @@ channel of MNE's sample dataset.
     </tr>
 
 
-    <tr class="repr-element channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1 ">
+    <tr class="repr-element channels-6102d42d-dea7-4fe1-91c3-fca03648b262 ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -388,7 +388,7 @@ channel of MNE's sample dataset.
     </tr>
 
 
-    <tr class="repr-element channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1 ">
+    <tr class="repr-element channels-6102d42d-dea7-4fe1-91c3-fca03648b262 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -401,7 +401,7 @@ channel of MNE's sample dataset.
     </tr>
 
 
-    <tr class="repr-element channels-36adc958-6463-4a45-b3c7-bc0f80d1b0b1 ">
+    <tr class="repr-element channels-6102d42d-dea7-4fe1-91c3-fca03648b262 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -416,8 +416,8 @@ channel of MNE's sample dataset.
 
 
 
-    <tr class="repr-section-header filters-f8f147b5-6674-469d-a639-2f95ff381003"  title="Hide section" 
-        onclick="toggleVisibility('filters-f8f147b5-6674-469d-a639-2f95ff381003')">
+    <tr class="repr-section-header filters-4e6f8b1c-ad92-44cf-a0ec-9ef496e649b2"  title="Hide section" 
+        onclick="toggleVisibility('filters-4e6f8b1c-ad92-44cf-a0ec-9ef496e649b2')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -429,21 +429,21 @@ channel of MNE's sample dataset.
         </th>
     </tr>
 
-    <tr class="repr-element filters-f8f147b5-6674-469d-a639-2f95ff381003 ">
+    <tr class="repr-element filters-4e6f8b1c-ad92-44cf-a0ec-9ef496e649b2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-f8f147b5-6674-469d-a639-2f95ff381003 ">
+    <tr class="repr-element filters-4e6f8b1c-ad92-44cf-a0ec-9ef496e649b2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-f8f147b5-6674-469d-a639-2f95ff381003 ">
+    <tr class="repr-element filters-4e6f8b1c-ad92-44cf-a0ec-9ef496e649b2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Projections</td>
         <td>
@@ -655,8 +655,8 @@ filter.
 
 
 
-    <tr class="repr-section-header general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b"  title="Hide section" 
-        onclick="toggleVisibility('general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b')">
+    <tr class="repr-section-header general-f04d147d-2c87-4b2a-a160-387d511a4c90"  title="Hide section" 
+        onclick="toggleVisibility('general-f04d147d-2c87-4b2a-a160-387d511a4c90')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -668,26 +668,26 @@ filter.
         </th>
     </tr>
 
-    <tr class="repr-element general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b ">
+    <tr class="repr-element general-f04d147d-2c87-4b2a-a160-387d511a4c90 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b ">
+    <tr class="repr-element general-f04d147d-2c87-4b2a-a160-387d511a4c90 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b ">
+    <tr class="repr-element general-f04d147d-2c87-4b2a-a160-387d511a4c90 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-6bfbfe30-5b6e-4e1c-9e17-97783c7da14b ">
+    <tr class="repr-element general-f04d147d-2c87-4b2a-a160-387d511a4c90 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -702,8 +702,8 @@ filter.
 
 
 
-    <tr class="repr-section-header acquisition-066e0eb5-6576-446e-9702-cf68bc5dd094" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-066e0eb5-6576-446e-9702-cf68bc5dd094')">
+    <tr class="repr-section-header acquisition-d07c2c71-7c34-4581-b05b-7c0f94888796" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-d07c2c71-7c34-4581-b05b-7c0f94888796')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -722,7 +722,7 @@ filter.
 
 
 
-    <tr class="repr-element acquisition-066e0eb5-6576-446e-9702-cf68bc5dd094 ">
+    <tr class="repr-element acquisition-d07c2c71-7c34-4581-b05b-7c0f94888796 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -738,8 +738,8 @@ filter.
 
 
 
-    <tr class="repr-section-header channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d"  title="Hide section" 
-        onclick="toggleVisibility('channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d')">
+    <tr class="repr-section-header channels-2755e355-3637-42ae-94b2-2781193326dc"  title="Hide section" 
+        onclick="toggleVisibility('channels-2755e355-3637-42ae-94b2-2781193326dc')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -752,7 +752,7 @@ filter.
     </tr>
 
 
-    <tr class="repr-element channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d ">
+    <tr class="repr-element channels-2755e355-3637-42ae-94b2-2781193326dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Magnetometers</td>
         <td>
@@ -765,7 +765,7 @@ filter.
     </tr>
 
 
-    <tr class="repr-element channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d ">
+    <tr class="repr-element channels-2755e355-3637-42ae-94b2-2781193326dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -783,7 +783,7 @@ filter.
     </tr>
 
 
-    <tr class="repr-element channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d ">
+    <tr class="repr-element channels-2755e355-3637-42ae-94b2-2781193326dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -796,7 +796,7 @@ filter.
     </tr>
 
 
-    <tr class="repr-element channels-8e5bad7c-96a8-412b-bda6-a9ef1fd0cb8d ">
+    <tr class="repr-element channels-2755e355-3637-42ae-94b2-2781193326dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -811,8 +811,8 @@ filter.
 
 
 
-    <tr class="repr-section-header filters-2f249ecc-415e-4321-80cf-713815fee7c1"  title="Hide section" 
-        onclick="toggleVisibility('filters-2f249ecc-415e-4321-80cf-713815fee7c1')">
+    <tr class="repr-section-header filters-8a13adfd-2f2b-493b-8460-f36953c82be3"  title="Hide section" 
+        onclick="toggleVisibility('filters-8a13adfd-2f2b-493b-8460-f36953c82be3')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -824,21 +824,21 @@ filter.
         </th>
     </tr>
 
-    <tr class="repr-element filters-2f249ecc-415e-4321-80cf-713815fee7c1 ">
+    <tr class="repr-element filters-8a13adfd-2f2b-493b-8460-f36953c82be3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-2f249ecc-415e-4321-80cf-713815fee7c1 ">
+    <tr class="repr-element filters-8a13adfd-2f2b-493b-8460-f36953c82be3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-2f249ecc-415e-4321-80cf-713815fee7c1 ">
+    <tr class="repr-element filters-8a13adfd-2f2b-493b-8460-f36953c82be3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Projections</td>
         <td>
@@ -1050,8 +1050,8 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
 
 
 
-    <tr class="repr-section-header general-8d0a9684-955c-4dac-94ba-d65b2485ad1a"  title="Hide section" 
-        onclick="toggleVisibility('general-8d0a9684-955c-4dac-94ba-d65b2485ad1a')">
+    <tr class="repr-section-header general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6"  title="Hide section" 
+        onclick="toggleVisibility('general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1063,26 +1063,26 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
         </th>
     </tr>
 
-    <tr class="repr-element general-8d0a9684-955c-4dac-94ba-d65b2485ad1a ">
+    <tr class="repr-element general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-8d0a9684-955c-4dac-94ba-d65b2485ad1a ">
+    <tr class="repr-element general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-8d0a9684-955c-4dac-94ba-d65b2485ad1a ">
+    <tr class="repr-element general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-8d0a9684-955c-4dac-94ba-d65b2485ad1a ">
+    <tr class="repr-element general-53b1b8c1-6ec1-49e9-baec-2fe6ce8e89b6 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -1097,8 +1097,8 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
 
 
 
-    <tr class="repr-section-header acquisition-6cfbfdb5-4270-4370-a243-3d396835bda9" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-6cfbfdb5-4270-4370-a243-3d396835bda9')">
+    <tr class="repr-section-header acquisition-72f7b62c-ac31-4468-a0da-30b1b38f6863" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-72f7b62c-ac31-4468-a0da-30b1b38f6863')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1117,7 +1117,7 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
 
 
 
-    <tr class="repr-element acquisition-6cfbfdb5-4270-4370-a243-3d396835bda9 ">
+    <tr class="repr-element acquisition-72f7b62c-ac31-4468-a0da-30b1b38f6863 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -1133,8 +1133,8 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
 
 
 
-    <tr class="repr-section-header channels-1cf1d0c3-a625-40b6-ad14-bd8033d2eac6"  title="Hide section" 
-        onclick="toggleVisibility('channels-1cf1d0c3-a625-40b6-ad14-bd8033d2eac6')">
+    <tr class="repr-section-header channels-da8f4c4b-1287-4075-9b1e-fc548d11d54b"  title="Hide section" 
+        onclick="toggleVisibility('channels-da8f4c4b-1287-4075-9b1e-fc548d11d54b')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1147,7 +1147,7 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
     </tr>
 
 
-    <tr class="repr-element channels-1cf1d0c3-a625-40b6-ad14-bd8033d2eac6 ">
+    <tr class="repr-element channels-da8f4c4b-1287-4075-9b1e-fc548d11d54b ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -1160,7 +1160,7 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
     </tr>
 
 
-    <tr class="repr-element channels-1cf1d0c3-a625-40b6-ad14-bd8033d2eac6 ">
+    <tr class="repr-element channels-da8f4c4b-1287-4075-9b1e-fc548d11d54b ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -1175,8 +1175,8 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
 
 
 
-    <tr class="repr-section-header filters-95afac12-2dae-4aa0-b132-f4d6ce57dd0c"  title="Hide section" 
-        onclick="toggleVisibility('filters-95afac12-2dae-4aa0-b132-f4d6ce57dd0c')">
+    <tr class="repr-section-header filters-32b18110-2125-4ebb-8ae6-15da116363ca"  title="Hide section" 
+        onclick="toggleVisibility('filters-32b18110-2125-4ebb-8ae6-15da116363ca')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1188,14 +1188,14 @@ baseline correction is applied using the 200 first ms of the epoch as baseline.
         </th>
     </tr>
 
-    <tr class="repr-element filters-95afac12-2dae-4aa0-b132-f4d6ce57dd0c ">
+    <tr class="repr-element filters-32b18110-2125-4ebb-8ae6-15da116363ca ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-95afac12-2dae-4aa0-b132-f4d6ce57dd0c ">
+    <tr class="repr-element filters-32b18110-2125-4ebb-8ae6-15da116363ca ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
@@ -1260,7 +1260,7 @@ array to an MNE-Python :class:`~mne.Epochs` object and plot the evoked response.
  .. code-block:: none
 
 
-    <Player: tutorial-epochs-1 | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
+    <Player: tutorial-epochs-1 | OFF | /home/runner/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
 
 
 
@@ -1480,8 +1480,8 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
 
 
 
-    <tr class="repr-section-header general-6179839a-1314-468b-aab1-db9e23181971"  title="Hide section" 
-        onclick="toggleVisibility('general-6179839a-1314-468b-aab1-db9e23181971')">
+    <tr class="repr-section-header general-487c01e8-22e2-4828-ab97-f706844f24dc"  title="Hide section" 
+        onclick="toggleVisibility('general-487c01e8-22e2-4828-ab97-f706844f24dc')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1493,26 +1493,26 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
         </th>
     </tr>
 
-    <tr class="repr-element general-6179839a-1314-468b-aab1-db9e23181971 ">
+    <tr class="repr-element general-487c01e8-22e2-4828-ab97-f706844f24dc ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-6179839a-1314-468b-aab1-db9e23181971 ">
+    <tr class="repr-element general-487c01e8-22e2-4828-ab97-f706844f24dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>2002-12-03 at 19:01:10 UTC</td>
     
     </tr>
-    <tr class="repr-element general-6179839a-1314-468b-aab1-db9e23181971 ">
+    <tr class="repr-element general-487c01e8-22e2-4828-ab97-f706844f24dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-6179839a-1314-468b-aab1-db9e23181971 ">
+    <tr class="repr-element general-487c01e8-22e2-4828-ab97-f706844f24dc ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -1527,8 +1527,8 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
 
 
 
-    <tr class="repr-section-header acquisition-e8f072fa-b738-4db9-aae4-cf3a240c5fc0" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-e8f072fa-b738-4db9-aae4-cf3a240c5fc0')">
+    <tr class="repr-section-header acquisition-d6173c59-c44a-4d7a-8b96-27ac98ca01bc" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-d6173c59-c44a-4d7a-8b96-27ac98ca01bc')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1547,7 +1547,7 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
 
 
 
-    <tr class="repr-element acquisition-e8f072fa-b738-4db9-aae4-cf3a240c5fc0 ">
+    <tr class="repr-element acquisition-d6173c59-c44a-4d7a-8b96-27ac98ca01bc ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -1563,8 +1563,8 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
 
 
 
-    <tr class="repr-section-header channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356"  title="Hide section" 
-        onclick="toggleVisibility('channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356')">
+    <tr class="repr-section-header channels-202b984b-e075-4bf6-a020-fa68d206ffab"  title="Hide section" 
+        onclick="toggleVisibility('channels-202b984b-e075-4bf6-a020-fa68d206ffab')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1577,7 +1577,7 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
     </tr>
 
 
-    <tr class="repr-element channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356 ">
+    <tr class="repr-element channels-202b984b-e075-4bf6-a020-fa68d206ffab ">
         <td class="repr-section-toggle-col"></td>
         <td>Magnetometers</td>
         <td>
@@ -1590,7 +1590,7 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
     </tr>
 
 
-    <tr class="repr-element channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356 ">
+    <tr class="repr-element channels-202b984b-e075-4bf6-a020-fa68d206ffab ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -1608,7 +1608,7 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
     </tr>
 
 
-    <tr class="repr-element channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356 ">
+    <tr class="repr-element channels-202b984b-e075-4bf6-a020-fa68d206ffab ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -1621,7 +1621,7 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
     </tr>
 
 
-    <tr class="repr-element channels-ac59e4a4-63f6-4cc7-b800-05a4ef7b8356 ">
+    <tr class="repr-element channels-202b984b-e075-4bf6-a020-fa68d206ffab ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -1636,8 +1636,8 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
 
 
 
-    <tr class="repr-section-header filters-bcba9a4a-2e8b-4b2d-aadd-113c7a09fc6d"  title="Hide section" 
-        onclick="toggleVisibility('filters-bcba9a4a-2e8b-4b2d-aadd-113c7a09fc6d')">
+    <tr class="repr-section-header filters-5bf845e5-72ef-451e-8f1b-e0dee6866e44"  title="Hide section" 
+        onclick="toggleVisibility('filters-5bf845e5-72ef-451e-8f1b-e0dee6866e44')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1649,21 +1649,21 @@ with a :class:`~mne.io.Raw` object which has :class:`~mne.Annotations` attached 
         </th>
     </tr>
 
-    <tr class="repr-element filters-bcba9a4a-2e8b-4b2d-aadd-113c7a09fc6d ">
+    <tr class="repr-element filters-5bf845e5-72ef-451e-8f1b-e0dee6866e44 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-bcba9a4a-2e8b-4b2d-aadd-113c7a09fc6d ">
+    <tr class="repr-element filters-5bf845e5-72ef-451e-8f1b-e0dee6866e44 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-bcba9a4a-2e8b-4b2d-aadd-113c7a09fc6d ">
+    <tr class="repr-element filters-5bf845e5-72ef-451e-8f1b-e0dee6866e44 ">
         <td class="repr-section-toggle-col"></td>
         <td>Projections</td>
         <td>
@@ -1711,12 +1711,12 @@ sampled numerical streams of events.
       | Sampling: Irregular
       | Number of channels: 2
       | Data type: <class 'numpy.float64'>
-      | Source: fc054f3615c948419528982c53e89c34
+      | Source: c474128f711944c4a26c0f40ae6d63d7
     , < sInfo 'tutorial-epochs-2' >
       | Sampling: 600.614990234375 Hz
       | Number of channels: 315
       | Data type: <class 'numpy.float64'>
-      | Source: fc054f3615c948419528982c53e89c34
+      | Source: c474128f711944c4a26c0f40ae6d63d7
     ]
 
 
@@ -1902,8 +1902,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6"  title="Hide section" 
-        onclick="toggleVisibility('general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6')">
+    <tr class="repr-section-header general-ecf6891d-a67b-49b9-a291-ecace7e78a15"  title="Hide section" 
+        onclick="toggleVisibility('general-ecf6891d-a67b-49b9-a291-ecace7e78a15')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1915,26 +1915,26 @@ stream on the network.
         </th>
     </tr>
 
-    <tr class="repr-element general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6 ">
+    <tr class="repr-element general-ecf6891d-a67b-49b9-a291-ecace7e78a15 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6 ">
+    <tr class="repr-element general-ecf6891d-a67b-49b9-a291-ecace7e78a15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6 ">
+    <tr class="repr-element general-ecf6891d-a67b-49b9-a291-ecace7e78a15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-eda11c97-93d0-4dcb-8a7f-6ef25d7b4aa6 ">
+    <tr class="repr-element general-ecf6891d-a67b-49b9-a291-ecace7e78a15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -1949,8 +1949,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header acquisition-0b4f3646-7aa0-47c6-bb0c-99e9c9a6111a" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-0b4f3646-7aa0-47c6-bb0c-99e9c9a6111a')">
+    <tr class="repr-section-header acquisition-1bd06795-1cb1-4519-bdfa-927f1d1d0d80" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-1bd06795-1cb1-4519-bdfa-927f1d1d0d80')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1969,7 +1969,7 @@ stream on the network.
 
 
 
-    <tr class="repr-element acquisition-0b4f3646-7aa0-47c6-bb0c-99e9c9a6111a ">
+    <tr class="repr-element acquisition-1bd06795-1cb1-4519-bdfa-927f1d1d0d80 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -1985,8 +1985,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292"  title="Hide section" 
-        onclick="toggleVisibility('channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292')">
+    <tr class="repr-section-header channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43"  title="Hide section" 
+        onclick="toggleVisibility('channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1999,7 +1999,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292 ">
+    <tr class="repr-element channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43 ">
         <td class="repr-section-toggle-col"></td>
         <td>Magnetometers</td>
         <td>
@@ -2012,7 +2012,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292 ">
+    <tr class="repr-element channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43 ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -2030,7 +2030,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292 ">
+    <tr class="repr-element channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -2043,7 +2043,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-d514a3ef-6eb8-4bd7-bfe5-cd33eceb1292 ">
+    <tr class="repr-element channels-23b4c3d2-226d-4b2d-88e1-5073a672ec43 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -2058,8 +2058,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header filters-4af92428-20e0-4897-8ace-046ad3f9c26a"  title="Hide section" 
-        onclick="toggleVisibility('filters-4af92428-20e0-4897-8ace-046ad3f9c26a')">
+    <tr class="repr-section-header filters-a6d4fbc3-5947-48cc-9e5f-e0bf9f52c217"  title="Hide section" 
+        onclick="toggleVisibility('filters-a6d4fbc3-5947-48cc-9e5f-e0bf9f52c217')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2071,21 +2071,21 @@ stream on the network.
         </th>
     </tr>
 
-    <tr class="repr-element filters-4af92428-20e0-4897-8ace-046ad3f9c26a ">
+    <tr class="repr-element filters-a6d4fbc3-5947-48cc-9e5f-e0bf9f52c217 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-4af92428-20e0-4897-8ace-046ad3f9c26a ">
+    <tr class="repr-element filters-a6d4fbc3-5947-48cc-9e5f-e0bf9f52c217 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-4af92428-20e0-4897-8ace-046ad3f9c26a ">
+    <tr class="repr-element filters-a6d4fbc3-5947-48cc-9e5f-e0bf9f52c217 ">
         <td class="repr-section-toggle-col"></td>
         <td>Projections</td>
         <td>
@@ -2283,8 +2283,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header general-08716590-58c0-47ed-9ecf-cc645048436e"  title="Hide section" 
-        onclick="toggleVisibility('general-08716590-58c0-47ed-9ecf-cc645048436e')">
+    <tr class="repr-section-header general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d"  title="Hide section" 
+        onclick="toggleVisibility('general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2296,26 +2296,26 @@ stream on the network.
         </th>
     </tr>
 
-    <tr class="repr-element general-08716590-58c0-47ed-9ecf-cc645048436e ">
+    <tr class="repr-element general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-08716590-58c0-47ed-9ecf-cc645048436e ">
+    <tr class="repr-element general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-08716590-58c0-47ed-9ecf-cc645048436e ">
+    <tr class="repr-element general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-08716590-58c0-47ed-9ecf-cc645048436e ">
+    <tr class="repr-element general-4a18911f-1e73-4338-b5fc-1dfb8da1bf5d ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -2330,8 +2330,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header acquisition-a79d9dc4-c00a-484f-a6e3-a0082de9c3c3" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-a79d9dc4-c00a-484f-a6e3-a0082de9c3c3')">
+    <tr class="repr-section-header acquisition-175f0027-5b4f-4caf-b1d4-4279af952355" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-175f0027-5b4f-4caf-b1d4-4279af952355')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2350,7 +2350,7 @@ stream on the network.
 
 
 
-    <tr class="repr-element acquisition-a79d9dc4-c00a-484f-a6e3-a0082de9c3c3 ">
+    <tr class="repr-element acquisition-175f0027-5b4f-4caf-b1d4-4279af952355 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>0.00 Hz</td>
@@ -2366,8 +2366,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header channels-4ef61e1d-3006-4586-92ab-0a04e4cde8da"  title="Hide section" 
-        onclick="toggleVisibility('channels-4ef61e1d-3006-4586-92ab-0a04e4cde8da')">
+    <tr class="repr-section-header channels-d9d38931-b17a-4c77-b71c-857850570a46"  title="Hide section" 
+        onclick="toggleVisibility('channels-d9d38931-b17a-4c77-b71c-857850570a46')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2380,7 +2380,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-4ef61e1d-3006-4586-92ab-0a04e4cde8da ">
+    <tr class="repr-element channels-d9d38931-b17a-4c77-b71c-857850570a46 ">
         <td class="repr-section-toggle-col"></td>
         <td>misc</td>
         <td>
@@ -2393,7 +2393,7 @@ stream on the network.
     </tr>
 
 
-    <tr class="repr-element channels-4ef61e1d-3006-4586-92ab-0a04e4cde8da ">
+    <tr class="repr-element channels-d9d38931-b17a-4c77-b71c-857850570a46 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -2408,8 +2408,8 @@ stream on the network.
 
 
 
-    <tr class="repr-section-header filters-f12652cf-e89a-4e06-9400-7468aec41868"  title="Hide section" 
-        onclick="toggleVisibility('filters-f12652cf-e89a-4e06-9400-7468aec41868')">
+    <tr class="repr-section-header filters-f290daea-1edf-4c74-b57b-b81966ddaaca"  title="Hide section" 
+        onclick="toggleVisibility('filters-f290daea-1edf-4c74-b57b-b81966ddaaca')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2421,14 +2421,14 @@ stream on the network.
         </th>
     </tr>
 
-    <tr class="repr-element filters-f12652cf-e89a-4e06-9400-7468aec41868 ">
+    <tr class="repr-element filters-f290daea-1edf-4c74-b57b-b81966ddaaca ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-f12652cf-e89a-4e06-9400-7468aec41868 ">
+    <tr class="repr-element filters-f290daea-1edf-4c74-b57b-b81966ddaaca ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>0.00 Hz</td>
@@ -2672,8 +2672,8 @@ We can now use those 2 streams to create epochs around the events of interest.
 
 
 
-    <tr class="repr-section-header general-b303309a-f3a1-4195-b8ce-2a7ff35e058d"  title="Hide section" 
-        onclick="toggleVisibility('general-b303309a-f3a1-4195-b8ce-2a7ff35e058d')">
+    <tr class="repr-section-header general-d63664a6-b842-414e-b18a-a16fdaa63446"  title="Hide section" 
+        onclick="toggleVisibility('general-d63664a6-b842-414e-b18a-a16fdaa63446')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2685,26 +2685,26 @@ We can now use those 2 streams to create epochs around the events of interest.
         </th>
     </tr>
 
-    <tr class="repr-element general-b303309a-f3a1-4195-b8ce-2a7ff35e058d ">
+    <tr class="repr-element general-d63664a6-b842-414e-b18a-a16fdaa63446 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-b303309a-f3a1-4195-b8ce-2a7ff35e058d ">
+    <tr class="repr-element general-d63664a6-b842-414e-b18a-a16fdaa63446 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-b303309a-f3a1-4195-b8ce-2a7ff35e058d ">
+    <tr class="repr-element general-d63664a6-b842-414e-b18a-a16fdaa63446 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-b303309a-f3a1-4195-b8ce-2a7ff35e058d ">
+    <tr class="repr-element general-d63664a6-b842-414e-b18a-a16fdaa63446 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -2719,8 +2719,8 @@ We can now use those 2 streams to create epochs around the events of interest.
 
 
 
-    <tr class="repr-section-header acquisition-2bf68f80-0b03-4a09-a1cc-bac9c31fe0fe" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-2bf68f80-0b03-4a09-a1cc-bac9c31fe0fe')">
+    <tr class="repr-section-header acquisition-6ffcceb5-7fdb-4b36-997f-7527daf90fc0" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-6ffcceb5-7fdb-4b36-997f-7527daf90fc0')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2739,7 +2739,7 @@ We can now use those 2 streams to create epochs around the events of interest.
 
 
 
-    <tr class="repr-element acquisition-2bf68f80-0b03-4a09-a1cc-bac9c31fe0fe ">
+    <tr class="repr-element acquisition-6ffcceb5-7fdb-4b36-997f-7527daf90fc0 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -2755,8 +2755,8 @@ We can now use those 2 streams to create epochs around the events of interest.
 
 
 
-    <tr class="repr-section-header channels-ac1137eb-bf96-4263-b5c2-2252ea72df57"  title="Hide section" 
-        onclick="toggleVisibility('channels-ac1137eb-bf96-4263-b5c2-2252ea72df57')">
+    <tr class="repr-section-header channels-4cafa257-9b01-45a7-97a2-684648591079"  title="Hide section" 
+        onclick="toggleVisibility('channels-4cafa257-9b01-45a7-97a2-684648591079')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2769,7 +2769,7 @@ We can now use those 2 streams to create epochs around the events of interest.
     </tr>
 
 
-    <tr class="repr-element channels-ac1137eb-bf96-4263-b5c2-2252ea72df57 ">
+    <tr class="repr-element channels-4cafa257-9b01-45a7-97a2-684648591079 ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -2782,7 +2782,7 @@ We can now use those 2 streams to create epochs around the events of interest.
     </tr>
 
 
-    <tr class="repr-element channels-ac1137eb-bf96-4263-b5c2-2252ea72df57 ">
+    <tr class="repr-element channels-4cafa257-9b01-45a7-97a2-684648591079 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -2797,8 +2797,8 @@ We can now use those 2 streams to create epochs around the events of interest.
 
 
 
-    <tr class="repr-section-header filters-ad67b823-4964-4a09-a8d9-4831f527efef"  title="Hide section" 
-        onclick="toggleVisibility('filters-ad67b823-4964-4a09-a8d9-4831f527efef')">
+    <tr class="repr-section-header filters-2709d6da-ba5d-4995-ae20-a363bc1ba0ea"  title="Hide section" 
+        onclick="toggleVisibility('filters-2709d6da-ba5d-4995-ae20-a363bc1ba0ea')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -2810,14 +2810,14 @@ We can now use those 2 streams to create epochs around the events of interest.
         </th>
     </tr>
 
-    <tr class="repr-element filters-ad67b823-4964-4a09-a8d9-4831f527efef ">
+    <tr class="repr-element filters-2709d6da-ba5d-4995-ae20-a363bc1ba0ea ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-ad67b823-4964-4a09-a8d9-4831f527efef ">
+    <tr class="repr-element filters-2709d6da-ba5d-4995-ae20-a363bc1ba0ea ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
@@ -2961,7 +2961,7 @@ receive new data from an LSL stream.
 
 
     <EpochsStream OFF (n: 20 between (-0.2, 0.5 seconds)> connected to:
-    	<Stream: ON | tutorial-epochs-2 (source: fc054f3615c948419528982c53e89c34)>
+    	<Stream: ON | tutorial-epochs-2 (source: c474128f711944c4a26c0f40ae6d63d7)>
 
 
 
@@ -2981,7 +2981,7 @@ receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | tutorial-epochs-2 (source: fc054f3615c948419528982c53e89c34)>
+    <Stream: OFF | tutorial-epochs-2 (source: c474128f711944c4a26c0f40ae6d63d7)>
 
 
 
@@ -3000,16 +3000,16 @@ receive new data from an LSL stream.
  .. code-block:: none
 
 
-    <Player: tutorial-epochs-2 | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
+    <Player: tutorial-epochs-2 | OFF | /home/runner/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 50.290 seconds)
+   **Total running time of the script:** (0 minutes 52.991 seconds)
 
-**Estimated memory usage:**  697 MB
+**Estimated memory usage:**  721 MB
 
 
 .. _sphx_glr_download_generated_tutorials_40_epochs.py:

@@ -222,8 +222,8 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
 
 
 
-    <tr class="repr-section-header general-8f1e9826-dcf3-46ad-8101-b8d39e609e61"  title="Hide section" 
-        onclick="toggleVisibility('general-8f1e9826-dcf3-46ad-8101-b8d39e609e61')">
+    <tr class="repr-section-header general-75a83ddb-46c8-4d13-adbf-6f769cc894c2"  title="Hide section" 
+        onclick="toggleVisibility('general-75a83ddb-46c8-4d13-adbf-6f769cc894c2')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -235,26 +235,26 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
         </th>
     </tr>
 
-    <tr class="repr-element general-8f1e9826-dcf3-46ad-8101-b8d39e609e61 ">
+    <tr class="repr-element general-75a83ddb-46c8-4d13-adbf-6f769cc894c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-8f1e9826-dcf3-46ad-8101-b8d39e609e61 ">
+    <tr class="repr-element general-75a83ddb-46c8-4d13-adbf-6f769cc894c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>2002-12-03 at 19:01:10 UTC</td>
     
     </tr>
-    <tr class="repr-element general-8f1e9826-dcf3-46ad-8101-b8d39e609e61 ">
+    <tr class="repr-element general-75a83ddb-46c8-4d13-adbf-6f769cc894c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-8f1e9826-dcf3-46ad-8101-b8d39e609e61 ">
+    <tr class="repr-element general-75a83ddb-46c8-4d13-adbf-6f769cc894c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -269,8 +269,8 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
 
 
 
-    <tr class="repr-section-header acquisition-a7d99ae7-18d7-4c5f-8e8d-919b76a2210d" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-a7d99ae7-18d7-4c5f-8e8d-919b76a2210d')">
+    <tr class="repr-section-header acquisition-bb83d4e8-8f91-4e06-b5db-2fd7327765a1" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-bb83d4e8-8f91-4e06-b5db-2fd7327765a1')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -289,7 +289,7 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
 
 
 
-    <tr class="repr-element acquisition-a7d99ae7-18d7-4c5f-8e8d-919b76a2210d ">
+    <tr class="repr-element acquisition-bb83d4e8-8f91-4e06-b5db-2fd7327765a1 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -305,8 +305,8 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
 
 
 
-    <tr class="repr-section-header channels-6a192e1b-14c0-4a53-9822-a1c584274860"  title="Hide section" 
-        onclick="toggleVisibility('channels-6a192e1b-14c0-4a53-9822-a1c584274860')">
+    <tr class="repr-section-header channels-5e30af22-01c4-466c-9f74-5c0eec5808b3"  title="Hide section" 
+        onclick="toggleVisibility('channels-5e30af22-01c4-466c-9f74-5c0eec5808b3')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -319,7 +319,7 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
     </tr>
 
 
-    <tr class="repr-element channels-6a192e1b-14c0-4a53-9822-a1c584274860 ">
+    <tr class="repr-element channels-5e30af22-01c4-466c-9f74-5c0eec5808b3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Magnetometers</td>
         <td>
@@ -332,7 +332,7 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
     </tr>
 
 
-    <tr class="repr-element channels-6a192e1b-14c0-4a53-9822-a1c584274860 ">
+    <tr class="repr-element channels-5e30af22-01c4-466c-9f74-5c0eec5808b3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -350,7 +350,7 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
     </tr>
 
 
-    <tr class="repr-element channels-6a192e1b-14c0-4a53-9822-a1c584274860 ">
+    <tr class="repr-element channels-5e30af22-01c4-466c-9f74-5c0eec5808b3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -363,7 +363,7 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
     </tr>
 
 
-    <tr class="repr-element channels-6a192e1b-14c0-4a53-9822-a1c584274860 ">
+    <tr class="repr-element channels-5e30af22-01c4-466c-9f74-5c0eec5808b3 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -378,8 +378,8 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
 
 
 
-    <tr class="repr-section-header filters-468dcb2a-6162-492a-aab5-bb823b09c828"  title="Hide section" 
-        onclick="toggleVisibility('filters-468dcb2a-6162-492a-aab5-bb823b09c828')">
+    <tr class="repr-section-header filters-f94ac2ad-1ef5-4fc7-9456-bd7aea0df3bd"  title="Hide section" 
+        onclick="toggleVisibility('filters-f94ac2ad-1ef5-4fc7-9456-bd7aea0df3bd')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -391,21 +391,21 @@ signal through a :class:`~mne_lsl.stream.StreamLSL`, and decode the epochs creat
         </th>
     </tr>
 
-    <tr class="repr-element filters-468dcb2a-6162-492a-aab5-bb823b09c828 ">
+    <tr class="repr-element filters-f94ac2ad-1ef5-4fc7-9456-bd7aea0df3bd ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-468dcb2a-6162-492a-aab5-bb823b09c828 ">
+    <tr class="repr-element filters-f94ac2ad-1ef5-4fc7-9456-bd7aea0df3bd ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-468dcb2a-6162-492a-aab5-bb823b09c828 ">
+    <tr class="repr-element filters-f94ac2ad-1ef5-4fc7-9456-bd7aea0df3bd ">
         <td class="repr-section-toggle-col"></td>
         <td>Projections</td>
         <td>
@@ -612,8 +612,8 @@ applying a low-pass filter at 40 Hz.
 
 
 
-    <tr class="repr-section-header general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98"  title="Hide section" 
-        onclick="toggleVisibility('general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98')">
+    <tr class="repr-section-header general-3f9b1c46-8490-4bed-ad1f-959fb560fb69"  title="Hide section" 
+        onclick="toggleVisibility('general-3f9b1c46-8490-4bed-ad1f-959fb560fb69')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -625,26 +625,26 @@ applying a low-pass filter at 40 Hz.
         </th>
     </tr>
 
-    <tr class="repr-element general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98 ">
+    <tr class="repr-element general-3f9b1c46-8490-4bed-ad1f-959fb560fb69 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98 ">
+    <tr class="repr-element general-3f9b1c46-8490-4bed-ad1f-959fb560fb69 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98 ">
+    <tr class="repr-element general-3f9b1c46-8490-4bed-ad1f-959fb560fb69 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-504a8156-bc6b-4c14-bd1c-ee56a5d19f98 ">
+    <tr class="repr-element general-3f9b1c46-8490-4bed-ad1f-959fb560fb69 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -659,8 +659,8 @@ applying a low-pass filter at 40 Hz.
 
 
 
-    <tr class="repr-section-header acquisition-ab787d03-7832-4c71-bbec-62c0b6593791" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-ab787d03-7832-4c71-bbec-62c0b6593791')">
+    <tr class="repr-section-header acquisition-8140b2be-5c9c-47d9-92ba-d33feab0b6ab" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-8140b2be-5c9c-47d9-92ba-d33feab0b6ab')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -679,7 +679,7 @@ applying a low-pass filter at 40 Hz.
 
 
 
-    <tr class="repr-element acquisition-ab787d03-7832-4c71-bbec-62c0b6593791 ">
+    <tr class="repr-element acquisition-8140b2be-5c9c-47d9-92ba-d33feab0b6ab ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -695,8 +695,8 @@ applying a low-pass filter at 40 Hz.
 
 
 
-    <tr class="repr-section-header channels-df8c1a7b-4ba7-48cd-bac7-3b082874ecc9"  title="Hide section" 
-        onclick="toggleVisibility('channels-df8c1a7b-4ba7-48cd-bac7-3b082874ecc9')">
+    <tr class="repr-section-header channels-f3a680a7-309b-4ddb-b867-fa12c042339f"  title="Hide section" 
+        onclick="toggleVisibility('channels-f3a680a7-309b-4ddb-b867-fa12c042339f')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -709,7 +709,7 @@ applying a low-pass filter at 40 Hz.
     </tr>
 
 
-    <tr class="repr-element channels-df8c1a7b-4ba7-48cd-bac7-3b082874ecc9 ">
+    <tr class="repr-element channels-f3a680a7-309b-4ddb-b867-fa12c042339f ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -727,7 +727,7 @@ applying a low-pass filter at 40 Hz.
     </tr>
 
 
-    <tr class="repr-element channels-df8c1a7b-4ba7-48cd-bac7-3b082874ecc9 ">
+    <tr class="repr-element channels-f3a680a7-309b-4ddb-b867-fa12c042339f ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -740,7 +740,7 @@ applying a low-pass filter at 40 Hz.
     </tr>
 
 
-    <tr class="repr-element channels-df8c1a7b-4ba7-48cd-bac7-3b082874ecc9 ">
+    <tr class="repr-element channels-f3a680a7-309b-4ddb-b867-fa12c042339f ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -755,8 +755,8 @@ applying a low-pass filter at 40 Hz.
 
 
 
-    <tr class="repr-section-header filters-f8a3659a-6ed8-4981-b24e-c421e9ff59b6"  title="Hide section" 
-        onclick="toggleVisibility('filters-f8a3659a-6ed8-4981-b24e-c421e9ff59b6')">
+    <tr class="repr-section-header filters-f7f8971e-0a1b-47f7-87f8-3843767c5356"  title="Hide section" 
+        onclick="toggleVisibility('filters-f7f8971e-0a1b-47f7-87f8-3843767c5356')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -768,14 +768,14 @@ applying a low-pass filter at 40 Hz.
         </th>
     </tr>
 
-    <tr class="repr-element filters-f8a3659a-6ed8-4981-b24e-c421e9ff59b6 ">
+    <tr class="repr-element filters-f7f8971e-0a1b-47f7-87f8-3843767c5356 ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-f8a3659a-6ed8-4981-b24e-c421e9ff59b6 ">
+    <tr class="repr-element filters-f7f8971e-0a1b-47f7-87f8-3843767c5356 ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
@@ -977,8 +977,8 @@ left).
 
 
 
-    <tr class="repr-section-header general-17db84fc-f74b-4be2-a83d-d6541ceb2080"  title="Hide section" 
-        onclick="toggleVisibility('general-17db84fc-f74b-4be2-a83d-d6541ceb2080')">
+    <tr class="repr-section-header general-d3b15c8a-9868-4d18-974b-ed989a958586"  title="Hide section" 
+        onclick="toggleVisibility('general-d3b15c8a-9868-4d18-974b-ed989a958586')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -990,26 +990,26 @@ left).
         </th>
     </tr>
 
-    <tr class="repr-element general-17db84fc-f74b-4be2-a83d-d6541ceb2080 ">
+    <tr class="repr-element general-d3b15c8a-9868-4d18-974b-ed989a958586 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Info</td>
     </tr>
-    <tr class="repr-element general-17db84fc-f74b-4be2-a83d-d6541ceb2080 ">
+    <tr class="repr-element general-d3b15c8a-9868-4d18-974b-ed989a958586 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-17db84fc-f74b-4be2-a83d-d6541ceb2080 ">
+    <tr class="repr-element general-d3b15c8a-9868-4d18-974b-ed989a958586 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-17db84fc-f74b-4be2-a83d-d6541ceb2080 ">
+    <tr class="repr-element general-d3b15c8a-9868-4d18-974b-ed989a958586 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -1024,8 +1024,8 @@ left).
 
 
 
-    <tr class="repr-section-header acquisition-619b0655-9643-4946-a552-f75412614dcf" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-619b0655-9643-4946-a552-f75412614dcf')">
+    <tr class="repr-section-header acquisition-3d707246-e60d-46d7-a04f-fefd323b99b9" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-3d707246-e60d-46d7-a04f-fefd323b99b9')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1044,7 +1044,7 @@ left).
 
 
 
-    <tr class="repr-element acquisition-619b0655-9643-4946-a552-f75412614dcf ">
+    <tr class="repr-element acquisition-3d707246-e60d-46d7-a04f-fefd323b99b9 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>600.61 Hz</td>
@@ -1060,8 +1060,8 @@ left).
 
 
 
-    <tr class="repr-section-header channels-0f3618b3-b7fa-45a9-a5ba-ee6f0263dde9"  title="Hide section" 
-        onclick="toggleVisibility('channels-0f3618b3-b7fa-45a9-a5ba-ee6f0263dde9')">
+    <tr class="repr-section-header channels-bd9ecf28-8554-4194-aed3-a1004cea2c17"  title="Hide section" 
+        onclick="toggleVisibility('channels-bd9ecf28-8554-4194-aed3-a1004cea2c17')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1074,7 +1074,7 @@ left).
     </tr>
 
 
-    <tr class="repr-element channels-0f3618b3-b7fa-45a9-a5ba-ee6f0263dde9 ">
+    <tr class="repr-element channels-bd9ecf28-8554-4194-aed3-a1004cea2c17 ">
         <td class="repr-section-toggle-col"></td>
         <td>Gradiometers</td>
         <td>
@@ -1087,7 +1087,7 @@ left).
     </tr>
 
 
-    <tr class="repr-element channels-0f3618b3-b7fa-45a9-a5ba-ee6f0263dde9 ">
+    <tr class="repr-element channels-bd9ecf28-8554-4194-aed3-a1004cea2c17 ">
         <td class="repr-section-toggle-col"></td>
         <td>Stimulus</td>
         <td>
@@ -1100,7 +1100,7 @@ left).
     </tr>
 
 
-    <tr class="repr-element channels-0f3618b3-b7fa-45a9-a5ba-ee6f0263dde9 ">
+    <tr class="repr-element channels-bd9ecf28-8554-4194-aed3-a1004cea2c17 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -1115,8 +1115,8 @@ left).
 
 
 
-    <tr class="repr-section-header filters-b3a2acc0-2d80-4dfb-b790-acc070b36139"  title="Hide section" 
-        onclick="toggleVisibility('filters-b3a2acc0-2d80-4dfb-b790-acc070b36139')">
+    <tr class="repr-section-header filters-5dc806ea-54fd-4537-9006-c44364d74edc"  title="Hide section" 
+        onclick="toggleVisibility('filters-5dc806ea-54fd-4537-9006-c44364d74edc')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -1128,14 +1128,14 @@ left).
         </th>
     </tr>
 
-    <tr class="repr-element filters-b3a2acc0-2d80-4dfb-b790-acc070b36139 ">
+    <tr class="repr-element filters-5dc806ea-54fd-4537-9006-c44364d74edc ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.10 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-b3a2acc0-2d80-4dfb-b790-acc070b36139 ">
+    <tr class="repr-element filters-5dc806ea-54fd-4537-9006-c44364d74edc ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>172.18 Hz</td>
@@ -1256,6 +1256,189 @@ retrain the classifier every 5 epochs.
    :class: sphx-glr-single-img
 
 
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ced20d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ced20d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ced2850> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ced2850> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe588050> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe588050> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe58a3f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe58a3f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb51d90> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb51d90> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe573f00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe573f00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c944160> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c944160> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe526e50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe526e50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe527850> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe527850> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb64d70> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb64d70> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb64500> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb64500> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa21f230> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa21f230> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa21f3f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa21f3f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa2c0e20> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2caa2c0e20> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7bc7d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7bc7d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7bce90> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7bce90> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe56f3e0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe56f3e0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe56efc0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe56efc0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9436b0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9436b0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c943570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c943570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb49130> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8cb49130> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c125c50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c125c50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c1eef50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c1eef50> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ce44590> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ce44590> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ce45010> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c6ce45010> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbd14e2d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbd14e2d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbd157710> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbd157710> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca11129e0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca11129e0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca1112e40> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca1112e40> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca11128a0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca11128a0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922d00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922d00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922ad0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922ad0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9214f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9214f0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922d00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c922d00> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9239d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2c8c9239d0> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2ca2568980> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb110> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb110> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7c9270> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7c9270> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7cb570> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7c9270> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+    /opt/hostedtoolcache/Python/3.13.0/x64/lib/python3.13/site-packages/sklearn/utils/_tags.py:322: FutureWarning: Estimator <mne.decoding.transformer.Vectorizer object at 0x7f2cbe7c9270> has no __sklearn_tags__ attribute, which is defined in `sklearn.base.BaseEstimator`. This will raise an error in scikit-learn 1.8. Please define the __sklearn_tags__ method, or inherit from `sklearn.base.BaseEstimator` and other appropriate mixins such as `sklearn.base.TransformerMixin`, `sklearn.base.ClassifierMixin`, `sklearn.base.RegressorMixin`, and `sklearn.base.ClusterMixin`, and `sklearn.base.OutlierMixin`.
+      warnings.warn(
+
 
 
 
@@ -1286,7 +1469,7 @@ new data from an LSL stream.
 
 
     <EpochsStream OFF (n: 10 between (-0.2, 0.5 seconds)> connected to:
-    	<Stream: ON | real-time-decoding (source: 44b5cdef9c4f4c51857fbb051f0ed4ae)>
+    	<Stream: ON | real-time-decoding (source: 4b0f11dfe2a840f0a86cf174289e6df4)>
 
 
 
@@ -1306,7 +1489,7 @@ new data from an LSL stream.
  .. code-block:: none
 
 
-    <Stream: OFF | real-time-decoding (source: 44b5cdef9c4f4c51857fbb051f0ed4ae)>
+    <Stream: OFF | real-time-decoding (source: 4b0f11dfe2a840f0a86cf174289e6df4)>
 
 
 
@@ -1325,16 +1508,16 @@ new data from an LSL stream.
  .. code-block:: none
 
 
-    <Player: real-time-decoding | OFF | /home/mscheltienne/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
+    <Player: real-time-decoding | OFF | /home/runner/mne_data/MNE-LSL-data/sample/mne-sample/sample_audvis_raw.fif>
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 15.899 seconds)
+   **Total running time of the script:** (1 minutes 18.475 seconds)
 
-**Estimated memory usage:**  607 MB
+**Estimated memory usage:**  609 MB
 
 
 .. _sphx_glr_download_generated_examples_40_decode.py:

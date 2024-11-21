@@ -221,8 +221,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header general-5dd83fe0-412e-40aa-bbac-de3f848a06c8"  title="Hide section" 
-        onclick="toggleVisibility('general-5dd83fe0-412e-40aa-bbac-de3f848a06c8')">
+    <tr class="repr-section-header general-22f35d6a-e335-4ec4-9490-94680c9b5d15"  title="Hide section" 
+        onclick="toggleVisibility('general-22f35d6a-e335-4ec4-9490-94680c9b5d15')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -234,7 +234,7 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element general-5dd83fe0-412e-40aa-bbac-de3f848a06c8 ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Filename(s)</td>
         <td>
@@ -245,26 +245,26 @@ reliably with :func:`scipy.signal.find_peaks`.
         </td>
     </tr>
 
-    <tr class="repr-element general-5dd83fe0-412e-40aa-bbac-de3f848a06c8 ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>MNE object type</td>
         <td>Raw</td>
     </tr>
-    <tr class="repr-element general-5dd83fe0-412e-40aa-bbac-de3f848a06c8 ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Measurement date</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-5dd83fe0-412e-40aa-bbac-de3f848a06c8 ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Participant</td>
     
         <td>Unknown</td>
     
     </tr>
-    <tr class="repr-element general-5dd83fe0-412e-40aa-bbac-de3f848a06c8 ">
+    <tr class="repr-element general-22f35d6a-e335-4ec4-9490-94680c9b5d15 ">
         <td class="repr-section-toggle-col"></td>
         <td>Experimenter</td>
     
@@ -279,8 +279,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header acquisition-dde0d5a1-46d8-4a4a-95e0-79fc3f230ff3" 
-        title="Hide section"  onclick="toggleVisibility('acquisition-dde0d5a1-46d8-4a4a-95e0-79fc3f230ff3')">
+    <tr class="repr-section-header acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616" 
+        title="Hide section"  onclick="toggleVisibility('acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -292,7 +292,7 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element acquisition-dde0d5a1-46d8-4a4a-95e0-79fc3f230ff3 ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Duration</td>
         <td>00:02:25 (HH:MM:SS)</td>
@@ -305,14 +305,14 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-element acquisition-dde0d5a1-46d8-4a4a-95e0-79fc3f230ff3 ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Sampling frequency</td>
         <td>1024.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element acquisition-dde0d5a1-46d8-4a4a-95e0-79fc3f230ff3 ">
+    <tr class="repr-element acquisition-3f2ffb66-eb0c-4b46-9858-65a4299a7616 ">
         <td class="repr-section-toggle-col"></td>
         <td>Time points</td>
         <td>148,477</td>
@@ -327,8 +327,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header channels-27413c69-6da3-4701-9b1f-82c8209ced07"  title="Hide section" 
-        onclick="toggleVisibility('channels-27413c69-6da3-4701-9b1f-82c8209ced07')">
+    <tr class="repr-section-header channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2"  title="Hide section" 
+        onclick="toggleVisibility('channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -341,7 +341,7 @@ reliably with :func:`scipy.signal.find_peaks`.
     </tr>
 
 
-    <tr class="repr-element channels-27413c69-6da3-4701-9b1f-82c8209ced07 ">
+    <tr class="repr-element channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>misc</td>
         <td>
@@ -354,7 +354,7 @@ reliably with :func:`scipy.signal.find_peaks`.
     </tr>
 
 
-    <tr class="repr-element channels-27413c69-6da3-4701-9b1f-82c8209ced07 ">
+    <tr class="repr-element channels-d6adec8f-5ea2-498a-84e4-411a3356f4c2 ">
         <td class="repr-section-toggle-col"></td>
         <td>Head & sensor digitization</td>
     
@@ -369,8 +369,8 @@ reliably with :func:`scipy.signal.find_peaks`.
 
 
 
-    <tr class="repr-section-header filters-a7ffa2e6-4173-4427-828e-c0aa664f7690"  title="Hide section" 
-        onclick="toggleVisibility('filters-a7ffa2e6-4173-4427-828e-c0aa664f7690')">
+    <tr class="repr-section-header filters-67f42796-c4c0-458b-8777-d76cf3f17eca"  title="Hide section" 
+        onclick="toggleVisibility('filters-67f42796-c4c0-458b-8777-d76cf3f17eca')">
         <th class="repr-section-toggle-col">
             <button>
             
@@ -382,14 +382,14 @@ reliably with :func:`scipy.signal.find_peaks`.
         </th>
     </tr>
 
-    <tr class="repr-element filters-a7ffa2e6-4173-4427-828e-c0aa664f7690 ">
+    <tr class="repr-element filters-67f42796-c4c0-458b-8777-d76cf3f17eca ">
         <td class="repr-section-toggle-col"></td>
         <td>Highpass</td>
         <td>0.00 Hz</td>
     </tr>
 
 
-    <tr class="repr-element filters-a7ffa2e6-4173-4427-828e-c0aa664f7690 ">
+    <tr class="repr-element filters-67f42796-c4c0-458b-8777-d76cf3f17eca ">
         <td class="repr-section-toggle-col"></td>
         <td>Lowpass</td>
         <td>512.00 Hz</td>
@@ -473,7 +473,7 @@ Let's select a 5 seconds window and plot the detrended signals.
     filter in MNE don't use initial filter conditions. Thus, the beginning of the
     filter signal should not be used as the filter has not yet converged.
 
-.. GENERATED FROM PYTHON SOURCE LINES 76-90
+.. GENERATED FROM PYTHON SOURCE LINES 76-91
 
 .. code-block:: Python
 
@@ -484,6 +484,7 @@ Let's select a 5 seconds window and plot the detrended signals.
     for raw_, label in zip(
         (raw, raw_notched, raw_bandpassed, raw_lowpassed),
         ("raw", "notched", "bandpassed", "lowpassed"),
+        strict=True,
     ):
         data, times = raw_[:, start:stop]  # select 5 seconds
         data -= data.mean()  # detrend
@@ -503,12 +504,12 @@ Let's select a 5 seconds window and plot the detrended signals.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 91-93
+.. GENERATED FROM PYTHON SOURCE LINES 92-94
 
 Our first issue arises, the filter is altering the phase of the signal and thus the
 shape of the QRS complex, shifting the R-peak to the right.
 
-.. GENERATED FROM PYTHON SOURCE LINES 93-107
+.. GENERATED FROM PYTHON SOURCE LINES 94-109
 
 .. code-block:: Python
 
@@ -519,6 +520,7 @@ shape of the QRS complex, shifting the R-peak to the right.
     for raw_, label in zip(
         (raw, raw_notched, raw_bandpassed, raw_lowpassed),
         ("raw", "notched", "bandpassed", "lowpassed"),
+        strict=True,
     ):
         data, times = raw_[:, start:stop]  # select 5 seconds
         data -= data.mean()  # detrend
@@ -538,7 +540,7 @@ shape of the QRS complex, shifting the R-peak to the right.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 108-124
+.. GENERATED FROM PYTHON SOURCE LINES 110-126
 
 The lowpassed and bandpassed signals are heavily shifted, while the notched signal
 retains the correct timing of the R-peak. Since our objective is to detect the R-peak
@@ -557,7 +559,7 @@ Next, let's detect the R-peaks on the same 5 seconds window of the notched signa
     We do not need to detrend to find peaks. Detrending was only useful to overlay the
     bandpassed signal with the raw, notched and lowpassed signals.
 
-.. GENERATED FROM PYTHON SOURCE LINES 124-135
+.. GENERATED FROM PYTHON SOURCE LINES 126-137
 
 .. code-block:: Python
 
@@ -584,7 +586,7 @@ Next, let's detect the R-peaks on the same 5 seconds window of the notched signa
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 136-141
+.. GENERATED FROM PYTHON SOURCE LINES 138-143
 
 The detected peaks are represented by the red dashed lines, and for now, the detection
 is horrible. But we can improve it by setting the following constraints:
@@ -592,7 +594,7 @@ is horrible. But we can improve it by setting the following constraints:
 - height of the peak should be at least 98% of the data range
 - distance between two peaks should be at least 0.5 seconds
 
-.. GENERATED FROM PYTHON SOURCE LINES 141-156
+.. GENERATED FROM PYTHON SOURCE LINES 143-158
 
 .. code-block:: Python
 
@@ -623,7 +625,7 @@ is horrible. But we can improve it by setting the following constraints:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 157-164
+.. GENERATED FROM PYTHON SOURCE LINES 159-166
 
 Adjusting the peak detection constraints to your signal is crucial.
 
@@ -633,7 +635,7 @@ Detector
 Now that we have a good idea of how to detect the R-peaks, let's create a real-time
 ``Detector`` object that will detect the R-peaks as soon as they enter the buffer.
 
-.. GENERATED FROM PYTHON SOURCE LINES 164-235
+.. GENERATED FROM PYTHON SOURCE LINES 166-237
 
 .. code-block:: Python
 
@@ -715,7 +717,7 @@ Now that we have a good idea of how to detect the R-peaks, let's create a real-t
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 236-252
+.. GENERATED FROM PYTHON SOURCE LINES 238-254
 
 The object above is a good start, but it will detect all peaks in the buffer and it
 doesn't have any memory of which peak was already detected. We need to add some
@@ -734,7 +736,7 @@ The triage logic uses a memory of the last detected peaks to count the number of
 candidates between 2 iteration, and to store the last known detected peak. This is
 simplify achieved by storing the LSL time at which the peak was detected.
 
-.. GENERATED FROM PYTHON SOURCE LINES 252-383
+.. GENERATED FROM PYTHON SOURCE LINES 254-385
 
 .. code-block:: Python
 
@@ -876,7 +878,7 @@ simplify achieved by storing the LSL time at which the peak was detected.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 384-391
+.. GENERATED FROM PYTHON SOURCE LINES 386-393
 
 Performance
 -----------
@@ -886,7 +888,7 @@ entering the buffer. To properly do so, the player should be started in a separa
 process to avoid hogging the CPU time in the main thread leaving no time for the
 player to stream new data.
 
-.. GENERATED FROM PYTHON SOURCE LINES 391-418
+.. GENERATED FROM PYTHON SOURCE LINES 393-420
 
 .. code-block:: Python
 
@@ -924,12 +926,12 @@ player to stream new data.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 419-421
+.. GENERATED FROM PYTHON SOURCE LINES 421-423
 
 Now that a :class:`~mne_lsl.player.PlayerLSL` is running in a separate process, we can
 start the detector and measure the time it takes to detect a new peak.
 
-.. GENERATED FROM PYTHON SOURCE LINES 421-438
+.. GENERATED FROM PYTHON SOURCE LINES 423-440
 
 .. code-block:: Python
 
@@ -962,7 +964,7 @@ start the detector and measure the time it takes to detect a new peak.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 439-443
+.. GENERATED FROM PYTHON SOURCE LINES 441-445
 
 The detection delay displayed can be as low as 1 or 2 ms depending on the computer, on
 the process configuration and on the performance of the streaming source. A
@@ -972,9 +974,9 @@ real-time application.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 37.840 seconds)
+   **Total running time of the script:** (0 minutes 38.110 seconds)
 
-**Estimated memory usage:**  178 MB
+**Estimated memory usage:**  190 MB
 
 
 .. _sphx_glr_download_generated_examples_10_peak_detection.py:

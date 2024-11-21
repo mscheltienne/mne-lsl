@@ -117,7 +117,7 @@ while loop without any idle time).
  .. code-block:: none
 
     Elapsed time (free time): 3.00 s
-    Elapsed time (hogging): 2.99 s
+    Elapsed time (hogging): 2.98 s
 
 
 
@@ -251,7 +251,7 @@ be used to interrupt the player process from the main process.
 
    **Total running time of the script:** (0 minutes 9.718 seconds)
 
-**Estimated memory usage:**  175 MB
+**Estimated memory usage:**  186 MB
 
 
 .. _sphx_glr_download_generated_examples_00_player_separate_process.py:

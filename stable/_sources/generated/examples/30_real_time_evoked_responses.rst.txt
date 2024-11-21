@@ -65,7 +65,7 @@ The epochs will be created around the event ID ``1`` from the ``'STI 014'`` chan
     while building the documentation on the CI. In practice, a ``chunk_size`` of 200
     samples is too large to represent a real-time application.
 
-.. GENERATED FROM PYTHON SOURCE LINES 36-89
+.. GENERATED FROM PYTHON SOURCE LINES 36-90
 
 .. code-block:: Python
 
@@ -99,7 +99,7 @@ The epochs will be created around the event ID ``1`` from the ``'STI 014'`` chan
         # start looking for epochs
         n = 0  # number of epochs
         evoked = None
-        while n <= 20:
+        while n < 20:
             if epochs.n_new_epochs == 0:
                 continue  # nothing new to do
             logger.info("Got %s / %s new epochs.", epochs.n_new_epochs, n)
@@ -114,6 +114,7 @@ The epochs will be created around the event ID ``1`` from the ``'STI 014'`` chan
                 if evoked is None
                 else combine_evoked([evoked, new_evoked], weights="nave")
             )
+            evoked.nave = n  # overwrite to avoid numerical approximation error
             ax.clear()
             evoked.plot(axes=ax, time_unit="s")  # plot on current figure
             fig.canvas.draw()
@@ -137,9 +138,9 @@ The epochs will be created around the event ID ``1`` from the ``'STI 014'`` chan
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 59.376 seconds)
+   **Total running time of the script:** (0 minutes 57.369 seconds)
 
-**Estimated memory usage:**  582 MB
+**Estimated memory usage:**  590 MB
 
 
 .. _sphx_glr_download_generated_examples_30_real_time_evoked_responses.py:
