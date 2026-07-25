@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import importlib
+import logging
 import os
 import pkgutil
 import subprocess
 import sys
 import sysconfig
+import threading
 
 import pyqtgraph as pg
 import pytest
@@ -16,9 +18,12 @@ import mne_lsl.viewer
 from mne_lsl.viewer._bootstrap import (
     _ensure_not_free_threaded,
     _ensure_qt_binding,
+    _excepthook,
+    _thread_excepthook,
     assert_binding_coherence,
     ensure_application,
     import_ads,
+    install_exception_policy,
 )
 
 # Safe at module level: 'tests/viewer/conftest.py' keeps this whole package out of
@@ -99,6 +104,114 @@ def test_viewer_public_api() -> None:
     """Test that only 'Viewer' is public and that it is exported."""
     assert mne_lsl.viewer.__all__ == ("Viewer",)
     assert isinstance(mne_lsl.viewer.Viewer, type)
+
+
+def _exc_info(error: BaseException) -> tuple:
+    """Return a real exception triplet for 'error'."""
+    try:
+        raise error
+    except BaseException:  # noqa: B036 -- re-raised through the returned traceback
+        return sys.exc_info()
+
+
+def test_install_exception_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that both hooks are replaced and that re-installing is a no-op.
+
+    Asserted through 'monkeypatch': pytest-qt swaps 'sys.excepthook' at every test
+    setup, thus the live global hook is its own, not ours, and must not be read.
+    """
+    monkeypatch.setattr(sys, "excepthook", sys.__excepthook__)
+    monkeypatch.setattr(threading, "excepthook", threading.__excepthook__)
+    install_exception_policy()
+    # the identity, not the behaviour, is what disarms PyQt6's 'qFatal()' abort.
+    assert sys.excepthook is not sys.__excepthook__
+    assert threading.excepthook is not threading.__excepthook__
+    hooks = (sys.excepthook, threading.excepthook)
+    install_exception_policy()
+    assert (sys.excepthook, threading.excepthook) == hooks
+
+
+def test_excepthook(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that an unhandled exception is logged and swallowed."""
+    caplog.set_level(logging.ERROR, logger="mne_lsl")
+    assert _excepthook(*_exc_info(ValueError("boom in a slot"))) is None
+    assert "Traceback" in caplog.text
+    assert "boom in a slot" in caplog.text
+    assert "ValueError" in caplog.text
+
+
+def test_excepthook_delegates(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that Ctrl+C prints through the interpreter and asks the viewer to quit.
+
+    'SystemExit' is deliberately not covered: CPython handles it before
+    'sys.excepthook' runs and PyQt6 intercepts it from a slot, thus a test of that
+    branch would assert on behaviour which can never occur.
+    """
+    calls: list[tuple] = []
+    monkeypatch.setattr(sys, "__excepthook__", lambda *args: calls.append(args))
+    caplog.set_level(logging.ERROR, logger="mne_lsl")
+    _excepthook(*_exc_info(KeyboardInterrupt()))
+    assert len(calls) == 1
+    assert not caplog.records
+
+
+def test_thread_excepthook(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that an unhandled exception of a worker thread is logged."""
+    args = threading.ExceptHookArgs(
+        (*_exc_info(ValueError("boom in a thread")), threading.current_thread())
+    )
+    caplog.set_level(logging.ERROR, logger="mne_lsl")
+    assert _thread_excepthook(args) is None
+    assert "boom in a thread" in caplog.text
+    assert threading.current_thread().name in caplog.text
+
+
+def test_thread_excepthook_ignores_system_exit(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that a thread exiting through 'SystemExit' is not reported."""
+    args = threading.ExceptHookArgs(
+        (*_exc_info(SystemExit(0)), threading.current_thread())
+    )
+    caplog.set_level(logging.ERROR, logger="mne_lsl")
+    assert _thread_excepthook(args) is None
+    assert not caplog.records
+
+
+def test_exception_policy_keeps_the_event_loop_alive() -> None:
+    """Test that an exception raised in a slot neither aborts nor goes unnoticed.
+
+    Run in a subprocess: PyQt6's default policy calls 'qFatal()', which would take the
+    whole pytest session down, and pytest-qt owns 'sys.excepthook' inside a test anyway.
+    """
+    code = (
+        "import sys\n"
+        "from qtpy.QtCore import QTimer\n"
+        "from mne_lsl.viewer._bootstrap import ensure_application\n"
+        "from mne_lsl.utils.logs import set_log_level\n"
+        "set_log_level('ERROR')\n"
+        "app = ensure_application()\n"
+        "def raiser():\n"
+        "    raise RuntimeError('boom in a slot')\n"
+        "QTimer.singleShot(0, raiser)\n"
+        "QTimer.singleShot(200, lambda: sys.stdout.write('STILL ALIVE\\n'))\n"
+        "QTimer.singleShot(400, app.quit)\n"
+        "sys.exit(app.exec())\n"
+    )
+    env = {**os.environ, "QT_QPA_PLATFORM": "offscreen"}
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        env=env,
+        text=True,
+        check=False,
+    )
+    assert out.returncode == 0, (out.returncode, out.stdout, out.stderr)
+    assert "STILL ALIVE" in out.stdout, (out.stdout, out.stderr)
+    # the logger writes to stdout, thus the traceback must be visible there.
+    assert "boom in a slot" in out.stdout, (out.stdout, out.stderr)
 
 
 def test_import_mne_lsl_is_qt_free() -> None:

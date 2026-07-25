@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import sys
 import sysconfig
+import threading
 from typing import TYPE_CHECKING
 
+from ..utils.logs import logger
+
 if TYPE_CHECKING:
-    from types import ModuleType
+    from types import ModuleType, TracebackType
 
     from qtpy.QtWidgets import QApplication
 
@@ -87,20 +90,103 @@ def ensure_application(name: str = "mne-lsl viewer") -> QApplication:
     global _app
     app = QApplication.instance() or QApplication([])
     app.setApplicationName(name)
+    # applied whether the application was created or reused, as the policy is a property
+    # of the process and not of the application object.
+    install_exception_policy()
     _app = app  # keep a strong reference alive, see the module-level comment
     return app
 
 
+def _excepthook(
+    exc_type: type[BaseException],
+    exc_value: BaseException,
+    exc_tb: TracebackType | None,
+) -> None:
+    """Log an unhandled exception of the main thread, then return.
+
+    Parameters
+    ----------
+    exc_type : type
+        Class of the unhandled exception.
+    exc_value : BaseException
+        The unhandled exception.
+    exc_tb : traceback | None
+        Traceback of the unhandled exception.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        # Ctrl+C while the event loop runs surfaces at the next bytecode, which is often
+        # inside a slot. Printing alone would strand the viewer, as
+        # 'sys.__excepthook__' never exits, so the application is asked to quit.
+        # Delegation targets the *constant* '__excepthook__', never a previously
+        # installed hook, which is what keeps the policy idempotent.
+        sys.__excepthook__(exc_type, exc_value, exc_tb)
+        from qtpy.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+        return
+    # CRITICAL, not ERROR: an unhandled exception must not become invisible under
+    # 'MNE_LSL_LOG_LEVEL=CRITICAL', which is exactly the silent no-op this policy exists
+    # to prevent. 'SystemExit' is deliberately not special-cased -- CPython handles it
+    # before 'sys.excepthook', and PyQt6 intercepts it from a slot, so that branch is
+    # unreachable.
+    logger.critical(
+        "Unhandled exception in the viewer", exc_info=(exc_type, exc_value, exc_tb)
+    )
+
+
+def _thread_excepthook(args: threading.ExceptHookArgs) -> None:
+    """Log an unhandled exception of a worker thread, then return.
+
+    Parameters
+    ----------
+    args : threading.ExceptHookArgs
+        The named tuple provided by :mod:`threading`, holding the exception triplet and
+        the thread which raised it.
+    """
+    if args.exc_type is SystemExit:
+        return  # 'threading.__excepthook__' ignores it too, and only the exact class
+    logger.critical(
+        "Unhandled exception in the viewer thread %r",
+        args.thread.name if args.thread is not None else None,
+        exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+    )
+
+
 def install_exception_policy() -> None:
-    """Install a consistent unhandled-exception policy across the Qt bindings."""
-    # An unhandled exception raised inside a slot behaves differently per binding, and
-    # neither default is acceptable: PyQt6 calls 'qFatal()' and aborts the process with
-    # SIGABRT, while PySide6 either swallows it silently, when the slot is invoked
-    # through the event loop, or re-raises it, when it is called synchronously. The same
-    # bug is therefore a hard crash on one binding and an invisible no-op on the other.
-    # This is the seam where the viewer installs one behaviour for both, e.g. log the
-    # traceback, surface it in the error area and keep the event loop alive.
-    # 'ensure_application' will call it once the policy is implemented.
+    """Install a consistent unhandled-exception policy across the Qt bindings.
+
+    An unhandled exception raised inside a slot behaves differently per binding: PyQt6
+    calls ``qFatal()`` and aborts the process with SIGABRT, while PySide6 prints the
+    traceback and keeps running. The same bug is therefore a hard crash on one binding
+    and a survivable, unlogged event on the other.
+
+    Notes
+    -----
+    Replacing :data:`sys.excepthook` is sufficient to obtain one behaviour on both
+    bindings, the traceback logged at the ERROR level and the event loop kept alive.
+    PyQt6 aborts only while the hook is *identically* :data:`sys.__excepthook__`, thus
+    assigning any other callable, even one which merely re-implements the default,
+    disarms the abort. No slot-wrapping decorator is needed. Verified across a matrix of
+    raise sites -- timer slot, ``eventFilter``, ``paintEvent``, a nested ``exec()``,
+    :class:`~qtpy.QtCore.QThread` -- and exception classes, on both bindings.
+
+    A :class:`KeyboardInterrupt` surfacing inside a slot becomes a non-event: the
+    traceback is printed and the event loop continues. The delegation below keeps Ctrl+C
+    normal on the console path only.
+
+    The hooks are module-level functions and the previous hook is never captured, thus
+    re-installing the policy is a no-op. This matters because :func:`ensure_application`
+    calls it on every invocation.
+
+    One divergence a hook cannot equalize: an exception raised in a *synchronous*
+    Python -> C++ -> Python round trip, e.g. ``app.sendEvent()`` reaching a virtual
+    override, is re-raised at the calling frame under PySide6 while it is hook-handled
+    under PyQt6. Only the caller's own ``try/except`` covers that case.
+    """
+    sys.excepthook = _excepthook
+    threading.excepthook = _thread_excepthook
 
 
 def import_ads() -> ModuleType:

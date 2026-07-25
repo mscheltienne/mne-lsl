@@ -8,6 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import darkdetect
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QApplication
+
+from ...utils._checks import check_value
+
 
 @dataclass(frozen=True, slots=True)
 class Tokens:
@@ -34,6 +40,7 @@ class Tokens:
     plot_bg: str  # pyqtgraph plot background
     plot_fg: str  # pyqtgraph axes text / lines
     grid: str  # pyqtgraph grid lines
+    bad: str  # bad-channel trace and axis label; the 'X ' prefix is the non-color cue
     error: str  # status: error
     warning: str  # status: warning
     success: str  # status: success
@@ -42,6 +49,10 @@ class Tokens:
 # The palette tables, as reviewed and accepted in 'brief/design/06_theme_polish_-
 # feedback.md'. Contrast note (WCAG): primary text sits at >=4.5:1 on window/base/
 # surface, and accent_text on the selection background at >=4.5:1.
+# 'bad' is the one value outside that review: the '#888888' of the trace-display
+# prototype reads at only 3.54:1 on the light plot background, below the 4.5:1 the axis
+# label drawn in the same color needs, thus a near-neutral grey clearing 4.5:1 on each
+# mode's 'plot_bg' is used instead. 'tests/viewer/theme/test__tokens.py' pins both.
 _LIGHT = Tokens(
     window="#f2f3f5",
     base="#ffffff",
@@ -60,6 +71,7 @@ _LIGHT = Tokens(
     plot_bg="#ffffff",
     plot_fg="#454b54",
     grid="#dee1e6",
+    bad="#6e7681",
     error="#c02b25",
     warning="#8a5a00",
     success="#1a7f37",
@@ -83,6 +95,7 @@ _DARK = Tokens(
     plot_bg="#171b21",
     plot_fg="#b3bdc8",
     grid="#2c343d",
+    bad="#8b949e",
     error="#f0837e",
     warning="#e0b054",
     success="#5fcf80",
@@ -105,7 +118,36 @@ def resolve_mode(mode: str = "auto") -> str:
     -------
     mode : str
         Either ``'light'`` or ``'dark'``.
+
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not ``'auto'``, ``'light'`` or ``'dark'``.
+
+    Notes
+    -----
+    Resolving ``'auto'`` may query the OS, and :mod:`darkdetect` shells out to
+    ``gsettings`` on Linux. Callers on a render path must pass an already-resolved
+    ``'light'`` / ``'dark'`` -- which short-circuits on the first line -- and never the
+    ``'auto'`` default.
     """
+    check_value(mode, ("auto", "light", "dark"), "mode")
+    if mode != "auto":
+        return mode
+    # 'instance()' returns whatever QCoreApplication exists, and that class has no
+    # 'styleHints' -- an embedding host may well run a non-GUI application.
+    hints = getattr(QApplication.instance(), "styleHints", None)
+    if hints is not None:
+        scheme = hints().colorScheme()
+        if scheme == Qt.ColorScheme.Dark:
+            return "dark"
+        if scheme == Qt.ColorScheme.Light:
+            return "light"
+    try:
+        detected = darkdetect.theme()
+    except Exception:  # optional pre-Qt-6.5 fallback, never fatal
+        detected = None
+    return "dark" if detected == "Dark" else "light"
 
 
 def tokens(mode: str = "auto") -> Tokens:
@@ -121,3 +163,4 @@ def tokens(mode: str = "auto") -> Tokens:
     tokens : Tokens
         The token table of the resolved mode.
     """
+    return _TABLE[resolve_mode(mode)]

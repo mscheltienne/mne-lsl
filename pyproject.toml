@@ -107,7 +107,7 @@ pyqt6 = [
   'PyQt6',
   'PyQt6Ads>=4.5.0',
   'pyqtgraph',
-  'qtawesome',
+  'qtawesome>=1.1.0',  # 'reset_cache', required to re-color icons on a theme flip
   'qtpy',
   'superqt',
 ]
@@ -116,7 +116,7 @@ pyside6 = [
   'pyqtgraph',
   'PySide6',
   'PySide6-QtAds>=5.0.0',
-  'qtawesome',
+  'qtawesome>=1.1.0',  # 'reset_cache', required to re-color icons on a theme flip
   'qtpy',
   'superqt',
 ]
