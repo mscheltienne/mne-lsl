@@ -34,6 +34,7 @@ style = [
 test = [
   'pylabrecorder>=0.3.0',
   'pytest-cov',
+  'pytest-qt',
   'pytest-randomly',
   'pytest-rerunfailures>=10.2',  # '--rerun-except'
   'pytest-timeout',
@@ -97,10 +98,14 @@ requires-python = '>=3.11'
 [project.optional-dependencies]
 # 'pyqt6' and 'pyside6' are mutually-exclusive, complete Qt stacks for mne_lsl.viewer:
 # the shared stack + one binding + its Qt-Advanced-Docking-System binding.
+# The Qt-ADS floors are the versions whose layout state (CDockManager.saveState) was
+# verified to be byte-identical across both bindings. Note that 'PySide6-QtAds' pins
+# 'PySide6-Essentials' and 'shiboken6' to an exact Qt version, so it, not the 'PySide6'
+# entry, effectively selects the Qt version of the 'pyside6' extra.
 pyqt6 = [
   'darkdetect',
   'PyQt6',
-  'PyQt6Ads',
+  'PyQt6Ads>=4.5.0',
   'pyqtgraph',
   'qtawesome',
   'qtpy',
@@ -110,7 +115,7 @@ pyside6 = [
   'darkdetect',
   'pyqtgraph',
   'PySide6',
-  'PySide6-QtAds',
+  'PySide6-QtAds>=5.0.0',
   'qtawesome',
   'qtpy',
   'superqt',
