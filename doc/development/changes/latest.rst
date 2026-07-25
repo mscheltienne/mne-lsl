@@ -24,3 +24,6 @@ Version 1.15
 - Restore macOS intel wheels (:pr:`565` by `Eric Larson`_)
 - Add a ``recover`` argument to :meth:`~mne_lsl.stream.StreamLSL.connect` to disable silent recovery of lost streams (:pr:`565` by `Eric Larson`_)
 - Fix an intermittent abort on inlet destruction by not closing the stream before destroying it, which could engage the ``liblsl`` stream recovery machinery whose cancellation races with the destruction (:pr:`565` by `Eric Larson`_)
+- Remove the legacy ``StreamViewer``, replaced by a new Qt 6 viewer (:pr:`566` by `Mathieu Scheltienne`_)
+- Remove ``pyqtgraph`` and ``qtpy`` from the core dependencies, ``import mne_lsl`` no longer imports Qt; the viewer dependencies are now gathered in the mutually-exclusive optional dependency groups ``mne-lsl[pyqt6]`` and ``mne-lsl[pyside6]`` (:pr:`566` by `Mathieu Scheltienne`_)
+- Remove the ``-s``/``--stream`` argument of the ``mne-lsl viewer`` command, the new viewer discovers streams from within its graphical interface (:pr:`566` by `Mathieu Scheltienne`_)
