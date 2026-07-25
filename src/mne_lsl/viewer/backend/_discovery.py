@@ -2,18 +2,186 @@
 
 Both objects run their blocking work off the GUI thread and report through Qt signals,
 which is the transport boundary: nothing outside this module touches a worker thread.
+
+Notes
+-----
+This module names no LSL object and imports nothing from :mod:`mne_lsl.lsl`: the two
+blocking calls it drives live in :mod:`~mne_lsl.viewer.backend._source`, and everything
+which crosses a thread boundary here is either plain Python data or a
+:class:`~mne_lsl.stream.BaseStream`.
+
+Handing a stream across the boundary is safe, and is worth stating: a
+:class:`~mne_lsl.stream.StreamLSL` has no Qt thread affinity -- its acquisition loop is
+a :mod:`concurrent.futures` executor, and reading its buffer from a thread other than
+the one which connected it is the normal contract of the class. A
+:class:`~mne_lsl.lsl.StreamInfo` is precisely what this is *not*, which is why one never
+leaves :mod:`~mne_lsl.viewer.backend._source`.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QObject, Signal
+from qtpy.QtCore import QCoreApplication, QObject, QThread, Signal
+
+from ...utils.logs import logger
+from ._source import connect_stream, resolve_descriptors
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ...stream import BaseStream
     from ._identity import StreamDescriptor
+
+# Bounded wait on a worker at shutdown, in milliseconds. A blocking liblsl call cannot
+# be interrupted, thus the wait has to cover the longest one which can be in flight, and
+# that is one connection: 'StreamLSL.connect' applies its 'timeout' -- 2 s by default --
+# once to the stream resolution, once to the opening of the inlet, which liblsl follows
+# with a fixed 0.5 s sleep, and once to the time correction, i.e. ~6.5 s worst case.
+# 10 s leaves a margin for a loaded host. Never 'QThread.terminate()', which Qt
+# documents as able to stop a thread while it holds a lock.
+_STOP_TIMEOUT_MS = 10000
+
+# Threads which are running, mapped to the worker moved onto them. Destroying a running
+# 'QThread' makes Qt call 'qFatal' and takes the whole process down, thus a thread and
+# its worker have to outlive whatever owns them: both are parentless and this registry
+# is what keeps them alive. It is what 'QThread(owner)' is not -- that ties the thread's
+# lifetime to an object the GUI is free to drop, and dropping one while a resolution or
+# a connection is in flight aborts the process. An entry is removed once its thread
+# reports 'finished', and an owner which was itself dropped mid-pass leaves its entry
+# behind: a deliberately leaked thread, which is always preferable to an abort.
+_RUNNING: dict[QThread, QObject] = {}
+
+
+def _ensure_running(thread: QThread, worker: QObject) -> None:
+    """Start ``thread`` if it is not running, and hold it while it runs.
+
+    Parameters
+    ----------
+    thread : QThread
+        Thread carrying ``worker``.
+    worker : QObject
+        Worker which was moved to ``thread``.
+
+    Notes
+    -----
+    Started lazily on the first request rather than in ``__init__``, and restarted here
+    after a stop: a finished :class:`~qtpy.QtCore.QThread` restarts cleanly, and its
+    worker keeps its affinity to it.
+    """
+    if thread.isRunning():
+        return
+    _RUNNING[thread] = worker  # see '_RUNNING'
+    thread.start()
+
+
+def _stop_thread(thread: QThread, kind: str) -> None:
+    """Ask ``thread`` to leave its event loop and wait for it, bounded.
+
+    Parameters
+    ----------
+    thread : QThread
+        Thread to stop; a thread which is not running is a no-op.
+    kind : str
+        Which worker this thread carries, for the warning message.
+
+    Notes
+    -----
+    A thread which does not stop within :data:`_STOP_TIMEOUT_MS` is deliberately leaked:
+    it stays registered in ``_RUNNING`` and keeps running until its blocking call
+    returns on its own, at which point it unregisters itself. Both alternatives are
+    worse -- :meth:`~qtpy.QtCore.QThread.terminate` can stop a thread while it holds a
+    lock, and destroying it aborts the process -- while the leak costs one thread stack,
+    and one inlet at worst, in a session which is already shutting down.
+    """
+    if not thread.isRunning():
+        return
+    thread.quit()
+    if not thread.wait(_STOP_TIMEOUT_MS):
+        logger.warning(
+            "The stream %s worker did not stop within %.1f s; it is left running until "
+            "its blocking call returns.",
+            kind,
+            _STOP_TIMEOUT_MS / 1000,
+        )
+
+
+def _release(stream: BaseStream) -> None:
+    """Disconnect a stream nobody will ever receive.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        A connected stream whose result was rejected as stale.
+
+    Notes
+    -----
+    Logged and swallowed: this runs on the failure path of a cancelled pass, where
+    raising would replace a leaked inlet with an unhandled exception. Not disconnecting
+    is not an option -- a dropped connected stream leaks a live inlet *and* its
+    acquisition thread for the life of the process, and it is the one silent failure
+    mode of this module.
+    """
+    try:
+        stream.disconnect()
+    except Exception as error:  # deliberately broad, see the note above
+        logger.warning("Could not release a stale stream: %s", error)
+
+
+class _DiscoveryWorker(QObject):
+    """Resolve the streams on the network, on a worker thread.
+
+    A plain :class:`~qtpy.QtCore.QObject`, so that :meth:`run` is directly callable on
+    the main thread in the tests, with no thread involved at all.
+
+    Attributes
+    ----------
+    done : Signal
+        Emitted with ``(generation, list[StreamDescriptor])`` on success.
+    failed : Signal
+        Emitted with ``(generation, message)`` on failure.
+    """
+
+    done = Signal(int, object)
+    failed = Signal(int, str)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Initialize the worker."""
+        super().__init__(parent)
+        # Written by the GUI thread, read by this thread when it picks a request up: it
+        # is what makes a request superseded before it ran self-cancel. A plain 'int'
+        # write and read needs no lock under the GIL, and no stronger mechanism would
+        # help: the resolution in flight cannot be interrupted.
+        self.generation = 0
+
+    def run(self, generation: int) -> None:
+        """Run one discovery pass and report its outcome.
+
+        Parameters
+        ----------
+        generation : int
+            Generation this pass was issued with, echoed back so that the owner can drop
+            a stale result.
+
+        Notes
+        -----
+        A request whose generation is no longer the current one returns without
+        resolving. :meth:`~qtpy.QtCore.QThread.quit` leaves the requests already posted
+        to this thread in its queue, and a restarted thread drains them from the front,
+        so without this check every ``refresh()`` which a ``stop()`` cancelled would be
+        replayed -- one full resolution each -- by the next ``refresh()``.
+        """
+        if self.generation != generation:
+            return  # superseded before this pass was started
+        try:
+            descriptors = resolve_descriptors()
+        except Exception as error:
+            # Broad on purpose: this is a thread boundary. An escaping exception would
+            # leave the interface stuck on 'Checking...' forever, with nothing but a log
+            # line from the process-wide thread hook to explain it.
+            self.failed.emit(generation, str(error))
+            return
+        self.done.emit(generation, descriptors)
 
 
 class Discovery(QObject):
@@ -27,19 +195,179 @@ class Discovery(QObject):
     streams_found : Signal
         Emitted with the ``list`` of :class:`~mne_lsl.viewer.backend.StreamDescriptor`
         found by the last pass, regular and irregular streams alike.
+
+    Notes
+    -----
+    Cancellation is stale-work rejection, not interruption: a monotonic generation
+    counter lives on the GUI side, every request carries the generation it was issued
+    with, and a result whose generation no longer matches is dropped. The counter is
+    mirrored onto the worker as well, which additionally lets a request the worker has
+    not picked up yet cancel itself instead of running a pointless pass, see
+    :meth:`_DiscoveryWorker.run`. The resolution *in flight* is still not interrupted,
+    because a blocking liblsl call cannot be.
+
+    ``streams_found`` is emitted with an empty list on ``'empty'``, so that the table
+    clears, and is deliberately *not* emitted on ``'failed'``, so that a transient
+    network failure leaves the last known good list on screen rather than flickering it
+    away.
     """
 
     progress = Signal(str)
     streams_found = Signal(object)
+    # Private, and typed 'int': emitted by the GUI thread and delivered to the worker's
+    # own thread, where the connection's affinity makes it queued without any explicit
+    # 'Qt.QueuedConnection'.
+    _request = Signal(int)
 
     def __init__(self, parent: QObject | None = None) -> None:
         """Initialize the discovery object."""
+        super().__init__(parent)
+        self._generation = 0
+        self._thread = QThread()  # parentless, held by '_RUNNING' while it runs
+        self._thread.setObjectName("mne-lsl-viewer-discovery")
+        # Parentless too, for another reason: 'moveToThread' refuses an object with a
+        # parent.
+        self._worker = _DiscoveryWorker()
+        self._worker.moveToThread(self._thread)
+        self._request.connect(self._worker.run)
+        self._worker.done.connect(self._on_done)
+        self._worker.failed.connect(self._on_failed)
+        self._thread.finished.connect(self._on_thread_finished)
+        # Belt and braces: 'ViewerWindow.closeEvent' is expected to stop this object,
+        # and this covers a shutdown which does not go through it. 'stop' is idempotent,
+        # thus both paths running is a no-op.
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.stop)
 
     def refresh(self) -> None:
         """Start one discovery pass, replacing a pass which is still running."""
+        self._generation += 1  # any in-flight result is now stale
+        self._worker.generation = self._generation  # cancels a superseded request
+        # emitted synchronously, so the progress label updates before the work starts.
+        self.progress.emit("checking")
+        _ensure_running(self._thread, self._worker)
+        self._request.emit(self._generation)
+        # ponytail: one resolve per Refresh click. Two rapid clicks run two passes
+        # back-to-back on the one worker thread and the first result is discarded;
+        # coalesce with a pending flag if Refresh-mashing becomes a real complaint.
 
     def stop(self) -> None:
         """Stop the running pass and wait for its worker; idempotent."""
+        self._generation += 1  # reject the result of a pass which is already in flight
+        self._worker.generation = self._generation  # cancel the requests still queued
+        _stop_thread(self._thread, "discovery")
+
+    def _on_thread_finished(self) -> None:
+        """Release the worker thread from ``_RUNNING`` once it has finished.
+
+        Connected to a bound method of this object rather than to a free function on
+        purpose: this object lives on the GUI thread, thus the connection is queued and
+        the entry is dropped there. Dropping it from the default context of that signal
+        -- the worker thread, which is emitting ``finished`` and is not finished yet --
+        could destroy the thread from within itself, which is one more way to abort the
+        process. A thread which has been restarted by the time this arrives keeps its
+        entry.
+        """
+        if not self._thread.isRunning():
+            _RUNNING.pop(self._thread, None)
+
+    def _on_done(self, generation: int, descriptors: object) -> None:
+        """Publish the descriptors of a pass which is still current.
+
+        Left undecorated, as every slot of this module: a mis-specified ``@Slot`` fails
+        silently at connect time, while a plain Python callable is correct on both
+        bindings.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the pass was issued with.
+        descriptors : list of StreamDescriptor
+            The descriptors found by the pass.
+        """
+        if generation != self._generation:
+            return  # stale pass, dropped
+        self.progress.emit("empty" if len(descriptors) == 0 else "updated")
+        self.streams_found.emit(descriptors)
+
+    def _on_failed(self, generation: int, message: str) -> None:
+        """Report the failure of a pass which is still current.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the pass was issued with.
+        message : str
+            Text of the exception which was raised.
+        """
+        if generation != self._generation:
+            return
+        logger.warning("Stream discovery failed: %s", message)
+        self.progress.emit("failed")
+
+
+class _ConnectorWorker(QObject):
+    """Connect to a batch of streams sequentially, on a worker thread.
+
+    Attributes
+    ----------
+    connected : Signal
+        Emitted with ``(generation, descriptor, stream)`` per connected stream.
+    failed : Signal
+        Emitted with ``(generation, descriptor, message)`` per failed connection.
+    """
+
+    connected = Signal(int, object, object)
+    failed = Signal(int, object, str)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Initialize the worker."""
+        super().__init__(parent)
+        # Written by the GUI thread, read by this thread between two connections: it is
+        # what makes 'Connector.stop()' able to cancel the connections it has not
+        # started yet. A plain 'int' write and read needs no lock under the GIL, and no
+        # stronger mechanism would help: the connection in flight cannot be interrupted.
+        self.generation = 0
+
+    def run(self, generation: int, descriptors: object, bufsize: float) -> None:
+        """Connect to every descriptor in order, reporting each outcome.
+
+        Parameters
+        ----------
+        generation : int
+            Generation this batch was issued with.
+        descriptors : sequence of StreamDescriptor
+            Descriptors of the streams to connect to, in order.
+        bufsize : float
+            Size of the stream buffers, in seconds.
+
+        Notes
+        -----
+        Sequential, so that a failure is unambiguously attributable to one stream, and a
+        failure never stops the others: the all-or-nothing rollback of a configuration
+        load is the caller's decision, not this loop's.
+
+        ``# ponytail: sequential connect, parallelise if >4-stream configurations become
+        common.``
+        """
+        for descriptor in descriptors:
+            if self.generation != generation:
+                return  # cancelled before this connection was started
+            try:
+                stream = connect_stream(descriptor, bufsize)
+            except Exception as error:
+                # As in '_DiscoveryWorker.run': an exception escaping a worker slot is
+                # invisible beyond a log line, and here it would additionally abandon
+                # every descriptor which comes after this one.
+                self.failed.emit(generation, descriptor, str(error))
+                continue
+            if self.generation != generation:
+                # cancelled *during* the connection, which takes about a second: the
+                # stream is live and nobody is listening for it any more.
+                _release(stream)
+                return
+            self.connected.emit(generation, descriptor, stream)
 
 
 class Connector(QObject):
@@ -55,13 +383,41 @@ class Connector(QObject):
         stream being a :class:`~mne_lsl.stream.BaseStream`.
     failed : Signal
         Emitted with ``(descriptor, message)`` when a connection failed.
+
+    Notes
+    -----
+    The generation counter is mirrored onto the worker, as :class:`Discovery`'s is, but
+    it buys more here: a batch of connections is a loop with one cancellation point per
+    item, thus :meth:`stop` really does cancel the connections which have not started
+    yet, while a discovery pass is one atomic uninterruptible call and its mirror can
+    only cancel a request the worker has not picked up yet.
+
+    The thread lifecycle below duplicates :class:`Discovery`'s handful of lines rather
+    than sharing a base class with it: the two request signatures differ and so do the
+    two cancellation models, so a common base would exist only to be parameterised by
+    both. What the two do share -- starting a thread and stopping it -- is factored out
+    into :func:`_ensure_running` and :func:`_stop_thread`.
     """
 
     connected = Signal(object, object)
     failed = Signal(object, str)
+    _request = Signal(int, object, float)
 
     def __init__(self, parent: QObject | None = None) -> None:
         """Initialize the connector object."""
+        super().__init__(parent)
+        self._generation = 0
+        self._thread = QThread()  # parentless, see 'Discovery.__init__' and '_RUNNING'
+        self._thread.setObjectName("mne-lsl-viewer-connector")
+        self._worker = _ConnectorWorker()  # parentless too, see 'Discovery.__init__'
+        self._worker.moveToThread(self._thread)
+        self._request.connect(self._worker.run)
+        self._worker.connected.connect(self._on_connected)
+        self._worker.failed.connect(self._on_failed)
+        self._thread.finished.connect(self._on_thread_finished)
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.stop)
 
     def open(self, descriptors: Sequence[StreamDescriptor], bufsize: float) -> None:
         """Connect to every stream of ``descriptors`` in the background.
@@ -73,6 +429,63 @@ class Connector(QObject):
         bufsize : float
             Size of the stream buffers, in seconds.
         """
+        self._generation += 1
+        self._worker.generation = self._generation  # visible to the worker's loop
+        _ensure_running(self._thread, self._worker)
+        # copied to a tuple, so that a caller mutating its own sequence afterwards
+        # cannot change the work which was already submitted.
+        self._request.emit(self._generation, tuple(descriptors), float(bufsize))
 
     def stop(self) -> None:
         """Cancel the pending connections and wait for the worker; idempotent."""
+        self._generation += 1
+        self._worker.generation = self._generation
+        _stop_thread(self._thread, "connector")
+
+    def _on_thread_finished(self) -> None:
+        """Release the worker thread from ``_RUNNING``; see 'Discovery'."""
+        if not self._thread.isRunning():
+            _RUNNING.pop(self._thread, None)
+
+    def _on_connected(
+        self, generation: int, descriptor: object, stream: object
+    ) -> None:
+        """Publish a stream which connected during the current batch.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the batch was issued with.
+        descriptor : StreamDescriptor
+            Descriptor of the stream which connected.
+        stream : BaseStream
+            The connected stream.
+        """
+        if generation != self._generation:
+            # The batch was replaced or stopped after the worker's own check and before
+            # this slot ran; the worker could not see that. Nobody will hear about this
+            # stream, thus it must be released here or it leaks.
+            _release(stream)
+            return
+        self.connected.emit(descriptor, stream)
+
+    def _on_failed(self, generation: int, descriptor: object, message: str) -> None:
+        """Report a connection which failed during the current batch.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the batch was issued with.
+        descriptor : StreamDescriptor
+            Descriptor of the stream which failed to connect.
+        message : str
+            Text of the exception which was raised.
+        """
+        if generation != self._generation:
+            return
+        logger.warning(
+            "Could not connect to the stream %s: %s",
+            descriptor.identity.as_tuple(),
+            message,
+        )
+        self.failed.emit(descriptor, message)

@@ -32,9 +32,10 @@ class StreamIdentity:
 
     def as_tuple(self) -> tuple[str, str, str]:
         """Return the identity as a plain ``(name, stype, source_id)`` tuple."""
+        return (self.name, self.stype, self.source_id)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class StreamDescriptor:
     """Description of a stream present on the network, as returned by discovery.
 
@@ -54,6 +55,16 @@ class StreamDescriptor:
         Host on which the outlet runs.
     dtype : str | DTypeLike
         Channel format of the stream.
+
+    Notes
+    -----
+    Frozen, and built exclusively of plain Python and numpy scalar types, because a
+    descriptor is what crosses the worker/GUI thread boundary in place of the
+    :class:`~mne_lsl.lsl.StreamInfo` it was read from: that object's ``__del__``
+    destroys the native stream info, so it must never be stored nor handed to another
+    thread. Freezing makes that ownership rule structural instead of conventional, and
+    makes a descriptor hashable, which is what the identity de-duplication of
+    :meth:`~mne_lsl.viewer._window.ViewerWindow.open_streams` relies on.
     """
 
     identity: StreamIdentity
