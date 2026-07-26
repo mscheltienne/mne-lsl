@@ -111,10 +111,9 @@ def channel_key(identity: tuple[str, str, str]) -> str:
 class ViewerConfig:
     r"""One named configuration.
 
-    Only the envelope is defined: the exact content of :attr:`presentation` is an open
-    design question (see ``brief/design/09_functionality_and_failure_modes.md`` §6),
-    thus it is carried as an opaque mapping which the viewer writes and reads back as a
-    whole and which nothing else interprets.
+    Only the envelope is defined: the exact content of :attr:`presentation` is still an
+    open question, thus it is carried as an opaque mapping which the viewer writes and
+    reads back as a whole and which nothing else interprets.
 
     Parameters
     ----------

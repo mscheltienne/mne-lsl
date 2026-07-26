@@ -668,7 +668,9 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
         self._check_connected("get_channel_units()")
         check_type(only_data_chs, (bool,), "only_data_chs")
         none = "data" if only_data_chs else "all"
-        picks = _picks_to_idx(self._info, picks, none, "bads", allow_empty=False)
+        # bad channels are not excluded, matching 'get_channel_types()' and
+        # 'BasePlayer.get_channel_units()' which both use an empty 'exclude'
+        picks = _picks_to_idx(self._info, picks, none, (), allow_empty=False)
         channel_units = list()
         for idx in picks:
             channel_units.append(

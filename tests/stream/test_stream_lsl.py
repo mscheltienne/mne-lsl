@@ -410,6 +410,13 @@ def test_stream_channel_units(mock_lsl_stream: DummyPlayer, raw: BaseRaw) -> Non
     assert ch_units[stream.ch_names.index("hEOG")][1] == -6
     assert ch_units[stream.ch_names.index("TRIGGER")][1] == 3
 
+    # bad channels are not excluded, else the returned list could not be indexed by
+    # channel, unlike 'get_channel_types()'
+    stream.info["bads"] = [stream.ch_names[1], stream.ch_names[3]]
+    assert len(stream.get_channel_units()) == len(stream.ch_names)
+    assert len(stream.get_channel_types()) == len(stream.ch_names)
+    stream.info["bads"] = []
+
     # set channel units after channel selection
     stream.pick(["vEOG", "hEOG", "TRIGGER", "F7", "Fp2"])
     raw_ = raw.copy().pick(["Fp2", "F7", "vEOG", "hEOG", "TRIGGER"])

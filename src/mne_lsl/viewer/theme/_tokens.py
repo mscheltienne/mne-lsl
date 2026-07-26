@@ -46,8 +46,7 @@ class Tokens:
     success: str  # status: success
 
 
-# The palette tables, as reviewed and accepted in 'brief/design/06_theme_polish_-
-# feedback.md'. Contrast note (WCAG): primary text sits at >=4.5:1 on window/base/
+# The palette tables. Contrast note (WCAG): primary text sits at >=4.5:1 on window/base/
 # surface, and accent_text on the selection background at >=4.5:1.
 # 'bad' is the one value outside that review: the '#888888' of the trace-display
 # prototype reads at only 3.54:1 on the light plot background, below the 4.5:1 the axis

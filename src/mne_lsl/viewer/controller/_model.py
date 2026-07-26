@@ -30,7 +30,7 @@ CH_TYPES = ["eeg", "eog", "ecg", "emg", "stim", "misc"]
 # Combined unit control: one human label per '(unit kind, unit multiplier)' pair, i.e.
 # per '(FIFF_UNIT_*, FIFF_UNITM_*)'. The label is 'SI_prefix(unit_mul) + symbol(unit)',
 # e.g. V with -6 -> uV. 'BaseStream.get_channel_units()' returns exactly this pair per
-# channel. See 'brief/references/mne_channel_units.md'.
+# channel.
 #
 # Open question: 'BaseStream.set_channel_units()' writes the multiplier only, and raises
 # for a channel whose kind is FIFF_UNIT_NONE, since MNE derives the kind from the

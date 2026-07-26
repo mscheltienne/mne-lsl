@@ -29,8 +29,7 @@ def _hue(index: int) -> float:
 
 
 # Fixed per-type colors: categorical hues muted to S=0.50, V=0.75 so a wall of traces
-# reads calmly; misc stays neutral gray. Accepted in 'brief/design/01_trace_display_-
-# feedback.md'.
+# reads calmly; misc stays neutral gray.
 _TYPE_COLORS: dict[str, str] = {
     "eeg": "#6098bf",
     "eog": "#bf8c60",
@@ -68,7 +67,9 @@ def trace_color(index: int, mode: str = "auto") -> QColor:
     Parameters
     ----------
     index : int
-        Channel index in presentation order.
+        Channel index in **acquisition** order, i.e. the channel's identity. Seeding on
+        a presentation or display position instead would recolor every channel whenever
+        the user reorders or hides one.
     mode : str
         ``'auto'``, ``'light'`` or ``'dark'``.
 
@@ -94,7 +95,8 @@ def channel_color(index: int) -> QColor:
     Parameters
     ----------
     index : int
-        Channel index in presentation order.
+        Channel index in **acquisition** order, i.e. the channel's identity, so that a
+        channel keeps its color across a reorder or a visibility change.
 
     Returns
     -------

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import contextlib
 import time
 import uuid
@@ -14,7 +13,6 @@ from mne_lsl.viewer.backend import StreamDescriptor, StreamIdentity, resolve_des
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from types import ModuleType
 
     from mne_lsl.stream import BaseStream
 
@@ -145,49 +143,3 @@ def streams() -> Generator[list[BaseStream], None, None]:
         with contextlib.suppress(AssertionError):
             stream.disconnect()
     connected.clear()
-
-
-@pytest.fixture
-def module_scan() -> Callable[[ModuleType], tuple[set[str], set[str]]]:
-    """Return a factory parsing a module's source into its imports and identifiers.
-
-    The import rules of 'backend/' cannot be checked through 'sys.modules': importing
-    'mne_lsl.viewer.backend._config' necessarily imports 'mne_lsl.viewer.__init__',
-    which imports qtpy, and 'mne_lsl.__init__', which imports 'mne_lsl.lsl'. The rule is
-    a source-level one, thus it is checked statically, on the module's own source only.
-
-    Identifiers come from the syntax tree and not from a text search, so that a
-    docstring mentioning a forbidden name -- documentation, not a dependency -- does not
-    trip the check.
-
-    An 'ImportFrom' is recorded as the dotted path of every name it binds, not as its
-    module alone, which is what catches 'from ... import lsl': its 'node.module' is
-    'None', so the module path of that form carries no segment to check at all. The
-    leading dots are stripped, so that '...lsl' and 'mne_lsl.lsl' are both caught by the
-    same segment check. Attribute access is what makes the 'identifiers' set worth
-    asserting on as well: 'import mne_lsl' followed by 'mne_lsl.lsl.resolve_streams()'
-    imports nothing forbidden and reaches the forbidden module anyway.
-    """
-
-    def _scan(module: ModuleType) -> tuple[set[str], set[str]]:
-        tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
-        imports: set[str] = set()
-        identifiers: set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                imports.update(alias.name for alias in node.names)
-                identifiers.update(alias.name.split(".")[-1] for alias in node.names)
-            elif isinstance(node, ast.ImportFrom):
-                prefix = (node.module or "").lstrip(".")
-                imports.update(
-                    f"{prefix}.{alias.name}" if prefix else alias.name
-                    for alias in node.names
-                )
-                identifiers.update(alias.name for alias in node.names)
-            elif isinstance(node, ast.Name):
-                identifiers.add(node.id)
-            elif isinstance(node, ast.Attribute):
-                identifiers.add(node.attr)
-        return imports, identifiers
-
-    return _scan
