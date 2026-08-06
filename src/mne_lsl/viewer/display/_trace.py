@@ -162,7 +162,9 @@ class TraceDisplay(QWidget):
 
         # One connection per display: the pyqtgraph items and the bar icons do not read
         # the QPalette, thus they need an explicit update on every theme flip.
-        theme_controller.theme_changed.connect(self._on_theme_changed)
+        self._following_theme = False
+        self._was_running = False  # whether 'closeEvent' stopped a running clock
+        self._follow_theme(True)
 
     # -- construction ---------------------------------------------------------------
     def _read_metadata(self) -> None:
@@ -171,10 +173,10 @@ class TraceDisplay(QWidget):
         Notes
         -----
         The picks are an explicit integer range rather than the ``None`` default because
-        resolving ``None`` costs ~140x more -- 341 µs against 2.5 µs at 256 channels --
-        and this runs again on every metadata change. ``strict=True`` on the ``zip`` is
-        the check that the two lists still agree in length, so a type and a unit can
-        never be paired across channels.
+        resolving ``None`` costs ~140x more: measured on the resolution itself, 341 µs
+        against 2.5 µs at 256 channels, and this runs again on every metadata change.
+        ``strict=True`` on the ``zip`` is the check that the two lists still agree in
+        length, so a type and a unit can never be paired across channels.
         """
         if not self._stream.connected:
             return
@@ -634,8 +636,23 @@ class TraceDisplay(QWidget):
         ev.accept()
 
     def showEvent(self, ev: QShowEvent) -> None:
-        """Grab the keyboard focus, so the arrow and page keys scroll."""
+        """Grab the keyboard focus and restore whatever a previous close dropped.
+
+        Notes
+        -----
+        The counterpart of :meth:`TraceDisplay.closeEvent`. Without it a display closed
+        and reopened keeps the previous mode's baked pens and bar icons for the rest of
+        the process, and -- worse -- stays frozen on the last frame it drew, since the
+        render clock is never restarted. The clock comes back only if the close stopped
+        a running one, so showing a display which was never started still draws nothing.
+        """
         super().showEvent(ev)
+        if not self._following_theme:
+            self._follow_theme(True)
+            self._on_theme_changed(theme_controller.mode)  # catch up a missed flip
+        if self._was_running:
+            self._was_running = False
+            self.start()
         self.setFocus()
 
     def closeEvent(self, ev: QCloseEvent) -> None:
@@ -646,12 +663,20 @@ class TraceDisplay(QWidget):
         The stream is deliberately **not** disconnected: it is borrowed, and its
         ownership belongs to whoever built it.
         """
+        self._was_running = self.running
         self.stop()
-        try:
-            theme_controller.theme_changed.disconnect(self._on_theme_changed)
-        except (TypeError, RuntimeError):
-            pass  # never connected, or already dropped
+        self._follow_theme(False)
         super().closeEvent(ev)
+
+    def _follow_theme(self, follow: bool) -> None:
+        """Connect or drop the theme connection; a no-op if it is already so."""
+        if follow == self._following_theme:
+            return
+        if follow:
+            theme_controller.theme_changed.connect(self._on_theme_changed)
+        else:
+            theme_controller.theme_changed.disconnect(self._on_theme_changed)
+        self._following_theme = follow
 
     # -- control-bar handlers, the only writers of the render-loop caches ------------
     def _on_scrollbar(self, value: int) -> None:

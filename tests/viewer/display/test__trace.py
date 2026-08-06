@@ -1083,6 +1083,51 @@ def test_close_drops_the_theme_connection(
     assert display._mode == "light"
 
 
+def test_reopen_restores_the_theme_connection_and_the_clock(
+    app: QApplication,
+    controller: ThemeController,
+    stream: StreamLSL,
+    make_display: Callable[..., TraceDisplay],
+) -> None:
+    """Test that a reopened display follows the theme again and resumes rendering.
+
+    The counterpart of the close, which drops both. Without it a display closed and
+    reopened keeps the previous mode's baked pens and bar icons for the rest of the
+    process, and -- worse -- sits frozen on the last frame it drew, as nothing restarts
+    the render clock.
+    """
+    controller.install(app, "light")
+    display = make_display(stream)
+    display.start()
+    display.close()
+    assert not display.running
+    controller.set_mode("dark")  # flipped while closed, so the pens are now stale
+    assert display._mode == "light"
+    display.show()
+    app.processEvents()
+    assert display.running  # the clock came back with the window
+    assert display._mode == "dark"  # and the missed flip was caught up
+    controller.set_mode("light")
+    assert display._mode == "light"  # and it follows again
+    display.close()
+
+
+def test_reopening_a_stopped_display_leaves_the_clock_stopped(
+    app: QApplication, stream: StreamLSL, make_display: Callable[..., TraceDisplay]
+) -> None:
+    """Test that showing a display which was never started does not start it.
+
+    The clock is resumed only if the close stopped a running one; whoever owns the
+    display decides when it renders.
+    """
+    display = make_display(stream)
+    display.close()
+    display.show()
+    app.processEvents()
+    assert not display.running
+    display.close()
+
+
 def test_no_controller_import(
     module_scan: Callable[[ModuleType], tuple[set[str], set[str]]],
 ) -> None:
