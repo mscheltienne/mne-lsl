@@ -594,8 +594,25 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
         buffer <resources/implementations:StreamLSL>`.
         """
 
-    def plot(self) -> None:
-        """Open a real-time stream viewer. Not implemented."""
+    def plot(self) -> int:
+        """Open the stream viewer on this stream and run it until it is closed.
+
+        Returns
+        -------
+        code : int
+            Exit code of the viewer.
+
+        Notes
+        -----
+        Blocking, and deliberately unlike :meth:`mne.io.Raw.plot`, which defaults
+        ``block=False``. That default works because it returns a figure an interactive
+        event loop keeps alive; a stream viewer has no such fallback, so opened from
+        a plain script without blocking it would be taken down with the script on the
+        next line. Use ``Viewer(stream=...).show()`` for the non-blocking form, from a
+        caller which already runs an event loop.
+
+        The stream is borrowed: closing the viewer leaves it connected.
+        """
 
     @fill_doc
     def pick(

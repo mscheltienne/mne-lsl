@@ -13,7 +13,9 @@ from ._qss import _QSS
 from ._tokens import resolve_mode, tokens
 
 if TYPE_CHECKING:
-    from qtpy.QtWidgets import QApplication
+    from collections.abc import Callable
+
+    from qtpy.QtWidgets import QApplication, QWidget
 
 
 def build_qpalette(mode: str = "auto") -> QPalette:
@@ -300,3 +302,34 @@ class ThemeController(QObject):
 # Module singleton shared by every consumer, e.g. to connect 'theme_changed'. A QObject
 # is safe to build before the QApplication exists, unlike a QWidget.
 theme_controller = ThemeController()
+
+
+def follow_theme(consumer: QWidget, slot: Callable[[str], None], follow: bool) -> None:
+    """Connect or drop a consumer's ``theme_changed`` connection; idempotent.
+
+    Parameters
+    ----------
+    consumer : QWidget
+        The consumer. Its ``_following_theme`` attribute holds the connection state and
+        must be initialized to ``False`` before the first call.
+    slot : callable
+        The consumer's own handler, taking the resolved mode.
+    follow : bool
+        Whether the consumer follows the theme from now on.
+
+    Notes
+    -----
+    :data:`theme_controller` is a process singleton and a widget which is closed but
+    still referenced stays connected to it, so it keeps re-theming itself -- rebuilding
+    the icons of a dead toolbar on every operating-system flip. Every consumer therefore
+    follows from ``showEvent`` and unfollows from ``closeEvent``, and both of those fire
+    more than once: a second ``connect`` re-themes twice per flip while a second
+    ``disconnect`` raises, which is what the flag rules out.
+    """
+    if follow == consumer._following_theme:
+        return
+    if follow:
+        theme_controller.theme_changed.connect(slot)
+    else:
+        theme_controller.theme_changed.disconnect(slot)
+    consumer._following_theme = follow

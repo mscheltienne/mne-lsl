@@ -65,7 +65,7 @@ def _full() -> ViewerConfig:
     )
 
 
-# -- import rules -------------------------------------------------------------------
+# -- import rules ----------------------------------------------------------------------
 def test_no_qt_no_lsl_import(
     module_scan: Callable[[ModuleType], tuple[set[str], set[str]]],
 ) -> None:
@@ -85,7 +85,7 @@ def test_no_qt_no_lsl_import(
     assert not (forbidden | {"StreamLSL"}) & identifiers
 
 
-# -- constants and paths ------------------------------------------------------------
+# -- constants and paths ---------------------------------------------------------------
 def test_config_dir(config_home: Path) -> None:
     """Test that the directory follows 'Path.home()' and is a dedicated subdirectory."""
     assert config_dir() == config_home / ".mne-lsl" / "viewer" / "configurations"
@@ -117,7 +117,7 @@ def test_channel_key() -> None:
     assert channel_key(("A\tB", "C", "D")) != channel_key(("A", "B\tC", "D"))
 
 
-# -- slug ---------------------------------------------------------------------------
+# -- slug ------------------------------------------------------------------------------
 @pytest.mark.parametrize(
     ("name", "slug"),
     [
@@ -151,7 +151,7 @@ def test_slug_strips_twice() -> None:
     assert _config._slug("a" * 63 + " b") == "a" * 63
 
 
-# -- round-trip ---------------------------------------------------------------------
+# -- round-trip ------------------------------------------------------------------------
 def test_save_and_list(config_home: Path) -> None:
     """Test that a fully populated configuration round-trips."""
     cfg = _full()
@@ -274,7 +274,7 @@ def test_save_propagates_an_unserializable_payload(config_home: Path) -> None:
         save_configuration(cfg)
 
 
-# -- listing ------------------------------------------------------------------------
+# -- listing ---------------------------------------------------------------------------
 def test_list_configurations_empty(config_home: Path) -> None:
     """Test that listing a missing directory is empty and does not create it."""
     assert list_configurations() == []
@@ -290,7 +290,7 @@ def test_list_configurations_order(config_home: Path) -> None:
     assert [cfg.name for cfg in list_configurations()] == ["Alpha", "beta", "corrupt"]
 
 
-# -- the invalid boundary -----------------------------------------------------------
+# -- the invalid boundary --------------------------------------------------------------
 _VALID = {"schema_version": 1, "name": "cfg", "streams": [["a", "b", "c"]]}
 
 
@@ -355,7 +355,7 @@ def test_invalid_title_falls_back_to_the_stem(config_home: Path) -> None:
     assert cfg.name == "some-stem"
 
 
-# -- tolerated leaves ---------------------------------------------------------------
+# -- tolerated leaves ------------------------------------------------------------------
 def test_tolerates_a_malformed_channels_entry(
     config_home: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -411,7 +411,7 @@ def test_ignores_an_unknown_key(config_home: Path) -> None:
     assert "written_by" not in json.loads(path.read_text(encoding="utf-8"))
 
 
-# -- delete -------------------------------------------------------------------------
+# -- delete ----------------------------------------------------------------------------
 def test_delete_configuration(config_home: Path) -> None:
     """Test that a configuration is deleted by its human-readable name."""
     path = save_configuration(_full())

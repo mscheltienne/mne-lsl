@@ -15,4 +15,11 @@ from ._config import (
 )
 from ._discovery import Connector, Discovery
 from ._identity import StreamDescriptor, StreamIdentity
-from ._source import connect_stream, create_stream, probe_channels, resolve_descriptors
+from ._source import (
+    connect_stream,
+    create_stream,
+    derive_bufsize,
+    probe_channels,
+    resolve_descriptors,
+    stream_identity,
+)

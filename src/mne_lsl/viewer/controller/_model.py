@@ -436,7 +436,7 @@ class ChannelModel(QAbstractListModel):
             channel.unit_mul = int(units[acq][1])
             channel.bad = names[acq] in bads
 
-    # -- introspection --------------------------------------------------------------
+    # -- introspection -----------------------------------------------------------------
     def channel(self, row: int) -> Channel:
         """Return the channel at display ``row``.
 
@@ -475,7 +475,7 @@ class ChannelModel(QAbstractListModel):
         """
         return len(self._rows)
 
-    # -- Qt model interface ---------------------------------------------------------
+    # -- Qt model interface ------------------------------------------------------------
     def rowCount(self, parent: QModelIndex | None = None) -> int:
         """Return the number of channels, ``0`` for a valid parent."""
         if parent is not None and parent.isValid():
@@ -538,7 +538,7 @@ class ChannelModel(QAbstractListModel):
             return True
         return False
 
-    # -- bulk edits, applied to an entire selection ---------------------------------
+    # -- bulk edits, applied to an entire selection ------------------------------------
     def set_visible(self, rows: Iterable[int], value: bool) -> None:
         """Set the visibility of ``rows`` to ``value``.
 
@@ -891,7 +891,7 @@ class ChannelModel(QAbstractListModel):
         self.metadata_changed.emit()
         self.layout_changed.emit()
 
-    # -- presentation order, mirrored by the trace display --------------------------
+    # -- presentation order, mirrored by the trace display -----------------------------
     def order_by(self, kind: str) -> None:
         """Reorder every channel with a deterministic command.
 
@@ -981,7 +981,7 @@ class ChannelModel(QAbstractListModel):
         """
         return [channel.acq_index for channel in self._rows if channel.visible]
 
-    # -- emission -------------------------------------------------------------------
+    # -- emission ----------------------------------------------------------------------
     def _emit_layout(self, lo: int, hi: int) -> None:
         """Emit one ``dataChanged`` spanning ``lo``..``hi``, then ``layout_changed``."""
         self.dataChanged.emit(self.index(lo, 0), self.index(hi, 0))

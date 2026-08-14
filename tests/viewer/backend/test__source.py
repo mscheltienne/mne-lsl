@@ -13,9 +13,12 @@ from mne_lsl.viewer.backend import (
     _source,
     connect_stream,
     create_stream,
+    derive_bufsize,
     probe_channels,
     resolve_descriptors,
+    stream_identity,
 )
+from mne_lsl.viewer.display import WINDOW_RANGE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,7 +26,7 @@ if TYPE_CHECKING:
     from mne_lsl.viewer.backend import StreamDescriptor
 
 
-# -- construction, no network -------------------------------------------------------
+# -- construction, no network ----------------------------------------------------------
 def test_create_stream(descriptor: Callable[..., StreamDescriptor]) -> None:
     """Test that the full identity and the buffer size are threaded through."""
     absent = descriptor()
@@ -117,7 +120,7 @@ def test_probe_channels_absent_identity(
         probe_channels(descriptor())
 
 
-# -- discovery ----------------------------------------------------------------------
+# -- discovery -------------------------------------------------------------------------
 def test_resolve_descriptors(outlets: Callable[..., StreamDescriptor]) -> None:
     """Test that an outlet is described by identity and headline metadata."""
     descriptor = outlets(n_channels=5, sfreq=128.0, stype="eeg")
@@ -226,7 +229,7 @@ def test_probe_channels_degenerate_names(
         assert probe_channels(descriptor) == expected
 
 
-# -- connection ---------------------------------------------------------------------
+# -- connection ------------------------------------------------------------------------
 def test_connect_stream(
     outlets: Callable[..., StreamDescriptor], streams: list[BaseStream]
 ) -> None:
@@ -246,3 +249,89 @@ def test_connect_stream_absent_identity(
     """Test that connecting to an absent identity raises rather than hanging."""
     with pytest.raises(RuntimeError, match="do not uniquely identify an LSL stream"):
         connect_stream(descriptor(), 2.0)
+
+
+# -- buffer size -----------------------------------------------------------------------
+_WINDOWS = (WINDOW_RANGE[0], 1.0, 2.5, 3.0, 5.0, 12.0, WINDOW_RANGE[1])
+
+
+def test_derive_bufsize() -> None:
+    """Test that the derived buffer covers the window, integrally and with headroom."""
+    sizes = [derive_bufsize(window) for window in _WINDOWS]
+    for window, bufsize in zip(_WINDOWS, sizes, strict=True):
+        # covering the window is the whole point: a shorter buffer draws over part of
+        # the time axis for the rest of the session, with nothing to explain it.
+        assert bufsize >= window, window
+        assert bufsize >= 4.0, window
+        assert bufsize == int(bufsize), (window, bufsize)
+    # strictly more than the window wherever the floor is not what won, i.e. the
+    # headroom is real and not a rounded-up window.
+    assert derive_bufsize(20.0) == 30.0
+    assert derive_bufsize(10.0) == 15.0
+    assert sizes == sorted(sizes)
+
+
+@pytest.mark.parametrize("window", _WINDOWS)
+def test_derive_bufsize_is_legal_for_an_event_stream(
+    descriptor: Callable[..., StreamDescriptor], window: float
+) -> None:
+    """Test that the derived size is a legal buffer for an irregular stream.
+
+    This is what makes the integral return structural rather than cosmetic:
+    'create_stream' refuses a fractional buffer size for an 'sfreq == 0' stream, and one
+    'Connector.open' batch carries a single size for regular and event streams alike,
+    thus a plain 'window * headroom' would half-connect every event stream of a
+    configuration.
+    """
+    stream = create_stream(descriptor(sfreq=0.0), derive_bufsize(window))
+    assert stream._bufsize == derive_bufsize(window)
+
+
+@pytest.mark.parametrize("window", [0, -1.0, float("nan"), float("inf")])
+def test_derive_bufsize_rejects(window: float) -> None:
+    """Test that a non-positive or non-finite window is refused up front.
+
+    The only window reaching this function today is the display's own bound, thus the
+    refusal is about the failure it prevents rather than about an untrusted caller: a
+    non-positive one allocates a buffer whose every read returns nothing, and 'nan'
+    raises from inside the buffer allocation of 'connect()', after the inlet is open.
+    """
+    with pytest.raises(ValueError, match="finite, strictly positive"):
+        derive_bufsize(window)
+
+
+# -- identity of a borrowed stream -----------------------------------------------------
+def test_stream_identity(
+    outlets: Callable[..., StreamDescriptor], streams: list[BaseStream]
+) -> None:
+    """Test that the identity of a connected stream is read back field by field.
+
+    The expected identity comes from discovery, not from the stream, thus a swap of
+    'stype' and 'source_id' -- both plain strings -- cannot pass unnoticed.
+    """
+    descriptor = outlets(n_channels=3, stype="ecg")
+    stream = connect_stream(descriptor, 4.0)
+    streams.append(stream)
+    identity = stream_identity(stream)
+    assert identity == descriptor.identity
+    assert identity.stype == "ecg"
+
+
+def test_stream_identity_rejects_a_disconnected_stream(
+    descriptor: Callable[..., StreamDescriptor],
+) -> None:
+    """Test that a stream which was never connected raises instead of reporting nothing.
+
+    The three fields are back-filled by 'connect()' from the inlet it opened, thus
+    without the guard this path builds an identity of three 'None' -- which the window
+    would then de-duplicate on and the status bar would render.
+    """
+    stream = create_stream(descriptor(), 4.0)
+    with pytest.raises(RuntimeError, match="only known once it is connected"):
+        stream_identity(stream)
+
+
+def test_stream_identity_rejects_a_non_lsl_stream() -> None:
+    """Test that an object which is not an LSL stream is refused by type."""
+    with pytest.raises(TypeError, match="only open a document for an LSL stream"):
+        stream_identity(object())

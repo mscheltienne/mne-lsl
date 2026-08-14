@@ -8,23 +8,30 @@ import subprocess
 import sys
 import sysconfig
 import threading
+from typing import TYPE_CHECKING
 
 import pyqtgraph as pg
 import pytest
 import qtpy
-from qtpy.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication, QMainWindow
 
 import mne_lsl.viewer
+import mne_lsl.viewer._bootstrap
 from mne_lsl.viewer._bootstrap import (
     _ensure_not_free_threaded,
     _ensure_qt_binding,
+    _ensure_qt_stack,
     _excepthook,
     _thread_excepthook,
     assert_binding_coherence,
+    configure_docking,
     ensure_application,
     import_ads,
     install_exception_policy,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Safe at module level: 'tests/viewer/conftest.py' keeps this whole package out of
 # collection (via 'collect_ignore_glob') before any module here is ever imported, on a
@@ -73,6 +80,37 @@ def test_ensure_qt_binding() -> None:
     assert qtpy.API_NAME in ("PyQt6", "PySide6")
 
 
+def test_ensure_qt_stack() -> None:
+    """Test that the running environment provides the whole Qt stack of the viewer.
+
+    The Qt-ADS distribution is binding-specific, thus the guard has to resolve the right
+    module name rather than a fixed one.
+    """
+    _ensure_qt_stack(qtpy.API_NAME)  # a no-op on a complete install
+    ads_modules = mne_lsl.viewer._bootstrap._ADS_MODULES
+    assert ads_modules[qtpy.API_NAME] == import_ads().__name__
+
+
+@pytest.mark.parametrize("api_name", ["PyQt6", "PySide6"])
+def test_ensure_qt_stack_names_the_extra(
+    api_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a half-installed extra raises naming both the module and the extra.
+
+    'pip install mne-lsl' followed by 'pip install PyQt6' passes the binding guard, and
+    the import then failed on whichever module it reached first -- 'No module named
+    'PyQt6Ads'', which names neither mne-lsl nor the extra which provides it.
+    """
+    monkeypatch.setattr(
+        mne_lsl.viewer._bootstrap, "_STACK_MODULES", ("mne_lsl_viewer_absent",)
+    )
+    with pytest.raises(ImportError, match="mne_lsl_viewer_absent") as error:
+        _ensure_qt_stack(api_name)
+    assert "mne-lsl[pyqt6]" in str(error.value)
+    assert "mne-lsl[pyside6]" in str(error.value)
+    assert api_name in str(error.value)
+
+
 def test_pyqtgraph_binding() -> None:
     """Test that qtpy and pyqtgraph agree on the Qt binding."""
     assert os.environ["PYQTGRAPH_QT_LIB"] == qtpy.API_NAME
@@ -98,6 +136,49 @@ def test_import_ads() -> None:
     assert ads.__name__ in ("PyQt6Ads", "PySide6QtAds")
     assert hasattr(ads, "CDockManager")
     assert hasattr(ads, "CDockWidget")
+
+
+_FLAGS = (
+    ("FocusHighlighting", True),
+    ("EqualSplitOnInsertion", True),
+    ("XmlCompressionEnabled", False),
+    ("XmlAutoFormattingEnabled", True),
+)
+
+
+def test_configure_docking() -> None:
+    """Test that the four docking configuration flags are set to their intended value.
+
+    Never written as a flip-and-restore: the flags are process-global static state which
+    a 'CDockManager' constructor consumes, and a manager built while 'FocusHighlighting'
+    was off segfaults on its next 'addDockWidget' once the flag is switched on.
+    """
+    ads = import_ads()
+    configure_docking()
+    for name, value in _FLAGS:
+        flag = getattr(ads.CDockManager.eConfigFlag, name)
+        assert ads.CDockManager.testConfigFlag(flag) is value, name
+
+
+def test_configure_docking_is_idempotent(flush_deletes: Callable[..., None]) -> None:
+    """Test that a second call, with a manager already built, changes nothing.
+
+    A future edit turning the assignment into a toggle would pass a single-call test and
+    take the process down here instead, as the crash is in 'addDockWidget'.
+    """
+    ads = import_ads()
+    configure_docking()
+    host = QMainWindow()
+    manager = ads.CDockManager(host)
+    configure_docking()
+    for name, value in _FLAGS:
+        flag = getattr(ads.CDockManager.eConfigFlag, name)
+        assert ads.CDockManager.testConfigFlag(flag) is value, name
+    dock = ads.CDockWidget(manager, "bootstrap-flags")
+    manager.addDockWidget(ads.DockWidgetArea.CenterDockWidgetArea, dock)
+    assert manager.dockWidgetsMap()["bootstrap-flags"] is dock
+    host.close()
+    flush_deletes(host)
 
 
 def test_viewer_public_api() -> None:

@@ -154,6 +154,12 @@ def contrast_ratio(fg: QColor, bg: QColor) -> float:
     return (hi + 0.05) / (lo + 0.05)
 
 
+# Size, in pixels, of every toolbar icon of the viewer. Declared next to 'icon' because
+# a bound must not be written twice: the application toolbar and the document toolbar
+# are the same chrome, and a second literal is how the two drift apart.
+_ICON_PX = 16
+
+
 def icon(name: str, **kwargs) -> QIcon:
     """Return a QtAwesome icon, so every component draws icons the same way.
 

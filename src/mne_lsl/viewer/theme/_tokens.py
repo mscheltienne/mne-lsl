@@ -102,6 +102,12 @@ _DARK = Tokens(
 
 _TABLE: dict[str, Tokens] = {"light": _LIGHT, "dark": _DARK}
 
+# The theme-mode vocabulary, in the order the user interface offers it. Declared once
+# and consumed by everything which validates or lists a mode -- 'resolve_mode', the
+# public 'theme' parameter of the viewer and the window's Auto/Light/Dark toggle: a
+# second copy is how the toggle ends up sitting on 'Auto' while the theme is dark.
+_MODES = ("auto", "light", "dark")
+
 
 def resolve_mode(mode: str = "auto") -> str:
     """Resolve ``mode`` to a concrete ``'light'`` or ``'dark'``.
@@ -130,7 +136,7 @@ def resolve_mode(mode: str = "auto") -> str:
     ``'light'`` / ``'dark'`` -- which short-circuits on the first line -- and never the
     ``'auto'`` default.
     """
-    check_value(mode, ("auto", "light", "dark"), "mode")
+    check_value(mode, _MODES, "mode")
     if mode != "auto":
         return mode
     # 'instance()' returns whatever QCoreApplication exists, and that class has no

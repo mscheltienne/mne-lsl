@@ -657,6 +657,78 @@ def test_rows_change_resizes_pool(display: TraceDisplay) -> None:
     assert display.top_offset == max(0.0, display.n_rows - 30)
 
 
+def test_stopped_clock_follows_the_row_count(
+    display: TraceDisplay, push: Callable[..., None]
+) -> None:
+    """Test that a row-count change repaints while the render clock is stopped.
+
+    A stopped clock is what the document's Freeze is. '_on_rows' rebuilds the pool, thus
+    without a repaint from the retained window the plot is left with **zero** curves --
+    an empty viewport, while the status bar still reports 'n/N ch'.
+    """
+    push(50)
+    display._render()
+    display.stop()
+    assert len(display._assigned) == display.n_rows
+    display.controls.set_rows(4)
+    assert display._assigned
+    assert set(display._assigned) == set(range(min(display.n_rows, 4 + _OVERSCAN)))
+    for row, curve in display._assigned.items():
+        assert curve.getData()[1] is not None, row
+        assert curve.getData()[1].size, row
+
+
+def test_stopped_clock_follows_a_scroll(
+    lsl_stream: Callable[..., tuple[StreamLSL, Callable]],
+    make_display: Callable[..., TraceDisplay],
+) -> None:
+    """Test that a scroll repaints the band while the render clock is stopped.
+
+    Nothing repaints on a scroll by itself, thus a frozen viewport scrolled onto rows it
+    had not banded yet showed them blank until it was unfrozen.
+    """
+    stream, push = lsl_stream(n_channels=16)
+    display = make_display(stream)
+    display.controls.set_rows(4)
+    push(50)
+    display.scroll_to(0.0)
+    display._render()
+    display.stop()
+    display.scroll_by(6)
+    assert display.top_offset == pytest.approx(6.0)
+    for row in range(6, 10):  # the four rows the viewport now shows
+        assert row in display._assigned, row
+        assert display._assigned[row].getData()[1].size, row
+
+
+def test_stopped_clock_repaints_the_same_window(
+    display: TraceDisplay, push: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a repaint over a stopped clock never polls the stream again.
+
+    The whole point of the retained window: a poll would advance the viewport to the
+    newest samples, so a frozen document would jump forward on any interaction at all.
+    """
+    push(50)
+    display._render()
+    display.stop()
+    acq = display._rows[0]
+    before = display._assigned[0].getData()[1].copy()
+    calls = _spy_get_data(display, monkeypatch)
+    push(50)
+    display.scroll_by(1)
+    display.controls.set_rows(4)
+    display.controls.set_window(1.0)
+    assert calls == []
+    assert np.array_equal(display._assigned[0].getData()[1], before)
+    # a hide is a subset of the retained picks, thus it too repaints without a poll --
+    # and the channel which moved onto row 0 draws its own samples out of that window.
+    display.set_channel_layout(list(range(1, display.n_channels)))
+    assert calls == []
+    assert display._rows[0] != acq
+    assert not np.array_equal(display._assigned[0].getData()[1], before)
+
+
 def test_disconnected_stream_render_is_noop(display: TraceDisplay) -> None:
     """Test that a render tick on a disconnected stream returns quietly."""
     display._stream.disconnect()
@@ -679,7 +751,7 @@ def test_close_is_idempotent(display: TraceDisplay) -> None:
     display.close()
 
 
-# -- render clock -------------------------------------------------------------------
+# -- render clock ----------------------------------------------------------------------
 def test_render_clock_repaints_and_stops(
     qtbot: QtBot,
     display: TraceDisplay,
@@ -704,7 +776,7 @@ def test_render_clock_repaints_and_stops(
     assert len(calls) == settled
 
 
-# -- amplitude transform ------------------------------------------------------------
+# -- amplitude transform ---------------------------------------------------------------
 def test_amp_transform_is_signed_and_y_only(display: TraceDisplay) -> None:
     """Test that the transform scales y alone, negatively, by gain x multiplier.
 
@@ -754,7 +826,7 @@ def test_curves_clip_and_downsample(display: TraceDisplay) -> None:
         assert curve.opts["downsampleMethod"] == "peak"
 
 
-# -- color modes --------------------------------------------------------------------
+# -- color modes -----------------------------------------------------------------------
 def test_type_color_mode_repens_every_curve(display: TraceDisplay) -> None:
     """Test that the type mode pens every curve with the color of its channel type.
 
@@ -792,7 +864,7 @@ def test_bad_color_wins_over_the_type_color(display: TraceDisplay) -> None:
     assert _pen_color(display, 0) != bad
 
 
-# -- scrollbar ----------------------------------------------------------------------
+# -- scrollbar -------------------------------------------------------------------------
 def test_scrollbar_tracks_the_offset(display: TraceDisplay) -> None:
     """Test that the thumb, the range and both steps follow the display.
 
@@ -833,7 +905,7 @@ def test_scrollbar_refresh_does_not_feed_back(display: TraceDisplay) -> None:
     assert display._scroll.value() == round(1.3333 * _SB_RES)
 
 
-# -- event overlays -----------------------------------------------------------------
+# -- event overlays --------------------------------------------------------------------
 def test_event_line_and_label_placement(display: TraceDisplay) -> None:
     """Test that an edge places its line and its value label on that very sample.
 
@@ -911,7 +983,7 @@ def test_visible_stim_is_not_picked_twice(display: TraceDisplay) -> None:
     assert display._event_pos == [display._rows.index(stim)]
 
 
-# -- layout changes -----------------------------------------------------------------
+# -- layout changes --------------------------------------------------------------------
 def test_reorder_restyles_the_assigned_curves(display: TraceDisplay) -> None:
     """Test that a reorder re-pens and re-transforms every row it kept.
 
@@ -990,7 +1062,7 @@ def test_placeholder_stays_inside_the_view_range(display: TraceDisplay) -> None:
     assert y0 <= pos.y() <= y1
 
 
-# -- metadata robustness ------------------------------------------------------------
+# -- metadata robustness ---------------------------------------------------------------
 def test_metadata_read_needs_a_connected_stream(display: TraceDisplay) -> None:
     """Test that a metadata refresh on a lost stream keeps the last known channels.
 
@@ -1054,7 +1126,7 @@ def test_channel_type_tables_cover_the_channel_model() -> None:
     assert set(CH_TYPES) <= set(_TYPE_COLORS)
 
 
-# -- lifecycle ----------------------------------------------------------------------
+# -- lifecycle -------------------------------------------------------------------------
 def test_show_grabs_the_keyboard_focus(shown_display: TraceDisplay) -> None:
     """Test that showing the display focuses it, so the arrow and page keys scroll.
 

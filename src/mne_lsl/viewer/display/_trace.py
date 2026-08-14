@@ -37,7 +37,14 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..theme import plot_colors, theme_controller, tokens, trace_color, type_color
+from ..theme import (
+    follow_theme,
+    plot_colors,
+    theme_controller,
+    tokens,
+    trace_color,
+    type_color,
+)
 from ._axis import ChannelAxis, TraceViewBox
 from ._controls import DisplayControls
 
@@ -136,6 +143,12 @@ class TraceDisplay(QWidget):
         self._pool: list[pg.PlotDataItem] = []
         self._free: list[pg.PlotDataItem] = []
         self._assigned: dict[int, pg.PlotDataItem] = {}
+        # The window the last poll returned, as '(picks, data, relative times)', or
+        # 'None' before the first one. What a stopped clock repaints, see '_redraw'.
+        # ponytail: it doubles the peak footprint of one window, which is ~10 MB for 256
+        # channels over a 5 s window at 1 kHz. The upgrade is to retain only the banded
+        # rows, which is the same change as narrowing the fetch itself.
+        self._frame: tuple[list[int], np.ndarray, np.ndarray] | None = None
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._build_ui()
@@ -164,9 +177,9 @@ class TraceDisplay(QWidget):
         # the QPalette, thus they need an explicit update on every theme flip.
         self._following_theme = False
         self._was_running = False  # whether 'closeEvent' stopped a running clock
-        self._follow_theme(True)
+        follow_theme(self, self._on_theme_changed, True)
 
-    # -- construction ---------------------------------------------------------------
+    # -- construction ------------------------------------------------------------------
     def _read_metadata(self) -> None:
         """Read the channel names, types, units and bads from the stream.
 
@@ -323,7 +336,7 @@ class TraceDisplay(QWidget):
             self._pool.append(curve)
             self._free.append(curve)
 
-    # -- lifecycle ------------------------------------------------------------------
+    # -- lifecycle ---------------------------------------------------------------------
     def start(self) -> None:
         """Start the render clock."""
         self._timer.start()
@@ -337,7 +350,7 @@ class TraceDisplay(QWidget):
         """Whether the render clock is running."""
         return self._timer.isActive()
 
-    # -- channel layout -------------------------------------------------------------
+    # -- channel layout ----------------------------------------------------------------
     def set_channel_layout(self, rows: Sequence[int]) -> None:
         """Set the visible rows of the display, in display order.
 
@@ -359,9 +372,9 @@ class TraceDisplay(QWidget):
         -----
         The curve pool is bound to y-slots, not to channels, thus a layout change
         creates, destroys, releases and repositions nothing: it re-pens and re-scales
-        the assigned curves, because the identity beneath each row changed, and renders
-        once. That trailing render is what closes the window in which a curve would show
-        the previous channel's samples in the new channel's color.
+        the assigned curves, because the identity beneath each row changed, and repaints
+        once. That trailing repaint closes the window in which a curve would draw the
+        previous channel's samples in the new channel's color.
         """
         rows = [int(row) for row in rows]
         n_channels = self.n_channels
@@ -382,7 +395,7 @@ class TraceDisplay(QWidget):
             self._assigned.clear()
             self._hide_events()
         self.scroll_to(self._top)  # re-clamp the extent, the range and the scrollbar
-        self._render()
+        self._repaint()
 
     def refresh_metadata(self) -> None:
         """Re-read the channel names, types, units and bads from the stream.
@@ -471,7 +484,7 @@ class TraceDisplay(QWidget):
         """Control bar owning the display state."""
         return self._controls
 
-    # -- vertical navigation --------------------------------------------------------
+    # -- vertical navigation -----------------------------------------------------------
     @property
     def top_offset(self) -> float:
         """Fractional row index at the top of the visible band."""
@@ -488,6 +501,10 @@ class TraceDisplay(QWidget):
         """
         self._top = min(max(0.0, row), self._max_offset())
         self._apply_scroll()
+        # The band moved, thus the rows which entered it carry no samples yet. Free of a
+        # poll: the retained window is at most one tick old while the clock runs, and it
+        # is the only thing a stopped clock -- a frozen viewport -- can follow at all.
+        self._redraw()
 
     def scroll_by(self, rows: float) -> None:
         """Scroll the viewport by ``rows`` channel rows, fractional allowed."""
@@ -516,7 +533,7 @@ class TraceDisplay(QWidget):
         self._scroll.setValue(round(self._top * _SB_RES))
         self._scroll.blockSignals(blocked)
 
-    # -- metadata accessors, called by the axis; every row is a visible row ----------
+    # -- metadata accessors, called by the axis; every row is a visible row ------------
     def channel_name(self, row: int) -> str:
         """Return the channel name of a visible row.
 
@@ -593,7 +610,7 @@ class TraceDisplay(QWidget):
         """
         return QTransform().scale(1.0, -self._gain[self._rows[row]] * self._amp_mult)
 
-    # -- input ----------------------------------------------------------------------
+    # -- input -------------------------------------------------------------------------
     def on_wheel(self, delta: int, modifiers) -> None:
         """Route a wheel notch to the amplitude scale or to the channel scroll.
 
@@ -648,7 +665,7 @@ class TraceDisplay(QWidget):
         """
         super().showEvent(ev)
         if not self._following_theme:
-            self._follow_theme(True)
+            follow_theme(self, self._on_theme_changed, True)
             self._on_theme_changed(theme_controller.mode)  # catch up a missed flip
         if self._was_running:
             self._was_running = False
@@ -665,20 +682,10 @@ class TraceDisplay(QWidget):
         """
         self._was_running = self.running
         self.stop()
-        self._follow_theme(False)
+        follow_theme(self, self._on_theme_changed, False)
         super().closeEvent(ev)
 
-    def _follow_theme(self, follow: bool) -> None:
-        """Connect or drop the theme connection; a no-op if it is already so."""
-        if follow == self._following_theme:
-            return
-        if follow:
-            theme_controller.theme_changed.connect(self._on_theme_changed)
-        else:
-            theme_controller.theme_changed.disconnect(self._on_theme_changed)
-        self._following_theme = follow
-
-    # -- control-bar handlers, the only writers of the render-loop caches ------------
+    # -- control-bar handlers, the only writers of the render-loop caches --------------
     def _on_scrollbar(self, value: int) -> None:
         """Handle the vertical scrollbar moving."""
         self.scroll_to(value / _SB_RES)
@@ -693,6 +700,7 @@ class TraceDisplay(QWidget):
         """Set the time window, in seconds."""
         self._winsize = float(value)
         self._apply_scroll()  # the placeholder is centred on the window
+        self._redraw()  # the samples map onto [0, W], thus x moved with the width
 
     def _on_scale(self, value: float) -> None:
         """Set the amplitude multiplier and re-apply every transform."""
@@ -715,7 +723,7 @@ class TraceDisplay(QWidget):
         if not self._events_on:
             self._hide_events()
 
-    # -- re-theme -------------------------------------------------------------------
+    # -- re-theme ----------------------------------------------------------------------
     def _on_theme_changed(self, mode: str) -> None:
         """Recolor the pyqtgraph items and the bar icons for ``mode``.
 
@@ -736,16 +744,58 @@ class TraceDisplay(QWidget):
         self._style_overlays()
         self._controls.retint_icons()
 
-    # -- rendering ------------------------------------------------------------------
+    # -- rendering ---------------------------------------------------------------------
+    def _repaint(self) -> None:
+        """Repaint the curves, polling the stream unless the clock stopped on a frame.
+
+        Notes
+        -----
+        A stopped clock is what Freeze is, and a frozen viewport has to stay on the
+        window it was frozen on: polling here would advance it to the newest samples,
+        which is what hiding a channel while frozen used to do. Before the first frame
+        exists there is nothing to redraw, so the poll is also what draws a display
+        which has never ticked.
+        """
+        if self.running or self._frame is None:
+            self._render()
+        else:
+            self._redraw()
+
+    def _redraw(self) -> None:
+        """Repaint the retained window, without polling the stream.
+
+        Notes
+        -----
+        What lets a stopped clock follow a scroll, a row-count change, a window change
+        and a layout change: none of those repaint by themselves, so before this existed
+        they left the visible rows of a frozen viewport blank.
+
+        A no-op until the first frame exists. The frame is reindexed onto the current
+        picks, as they are what its rows are ordered by; a channel which was hidden when
+        the frame was taken has no samples in it at all, and the window is then re-read
+        rather than leaving a row blank, which nothing distinguishes from a defect.
+        """
+        if self._frame is None or not self._rows:
+            return
+        picks, data, relative = self._frame
+        if picks == self._picks:
+            self._draw(data, relative)
+            return
+        position = {acq: index for index, acq in enumerate(picks)}
+        if any(acq not in position for acq in self._picks):
+            self._render()
+            return
+        self._draw(data[[position[acq] for acq in self._picks]], relative)
+
     def _render(self) -> None:
-        """Poll the stream and refresh the banded curves and the event overlays.
+        """Poll the stream, retain the window it returned and paint it.
 
         Notes
         -----
         The stream is polled on every tick, without consulting ``n_new_samples``: the
         curve-to-row reassignment at the band edge and the event placement depend on
         the scroll offset, thus skipping the fetch would leave a newly banded row blank
-        on a stalled stream and turn the render at the end of
+        on a stalled stream and turn the repaint at the end of
         :meth:`TraceDisplay.set_channel_layout` into a no-op.
         """
         if not self._stream.connected:
@@ -766,12 +816,36 @@ class TraceDisplay(QWidget):
         # channels, i.e. 2.3% of the 33 ms budget spent copying rows nobody draws. The
         # upgrade is 'picks = rows[lo:hi] + events' with 'data[row - lo]', at the cost
         # of rebuilding the picks every tick; it pays off well past 256 channels.
+        #
+        # The sample times relative to the newest sample, i.e. ending at 0. Retained
+        # rather than the absolute ones, which 'get_data' returns as a *view* into the
+        # buffer the acquisition thread keeps rolling, and rather than the mapped x,
+        # which a change of the window width makes stale.
+        relative = ts - float(ts[-1])
+        self._frame = (list(self._picks), data, relative)
+        self._draw(data, relative)
+
+    def _draw(self, data: np.ndarray, relative: np.ndarray) -> None:
+        """Paint one window onto the banded curves and the event overlays.
+
+        Parameters
+        ----------
+        data : array of shape (n_picks, n_samples)
+            One window, in the order of ``self._picks``.
+        relative : array of shape (n_samples,)
+            Sample times relative to the newest sample of the window, ending at 0.
+
+        Notes
+        -----
+        Requires a non-empty layout: both callers return before this while every trace
+        is hidden, so that the event overlays stay hidden with the placeholder.
+        """
         window = self._winsize
-        # The window's absolute timestamps map onto a fixed [0, W]: the newest sample
+        # The window's relative timestamps map onto a fixed [0, W]: the newest sample
         # sits at the right edge and the oldest at the left one, so new data enters at
         # the right and the traces sweep left under a static axis. x stays monotonic,
         # thus the clipping and the peak downsampling still apply.
-        x = ts - float(ts[-1]) + window
+        x = relative + window
         self._vb.setXRange(0.0, window, padding=0)
 
         lo = max(0, int(floor(self._top)) - _OVERSCAN)

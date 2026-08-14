@@ -17,6 +17,7 @@ and :class:`~mne_lsl.stream.BaseStream`, which has no Qt thread affinity.
 
 from __future__ import annotations
 
+from math import ceil, isfinite
 from typing import TYPE_CHECKING
 
 from ...lsl import StreamInlet, resolve_streams
@@ -35,6 +36,13 @@ _RESOLVE_TIMEOUT = 1.0
 # Channel probe: liblsl's own timeouts, applied once per operation. No watchdog, as a
 # blocking liblsl call cannot be interrupted and a watchdog would be theatre.
 _PROBE_TIMEOUT = 2.0
+
+# Buffer headroom over the widest window the display can show, and the floor below which
+# a buffer is not worth having. The buffer must hold a full window plus the samples a
+# future processing pipeline needs to warm up. No shipped caller reaches the floor: the
+# only one passes the widest selectable window, 20 s, and the floor binds below 2.67 s.
+_BUFSIZE_HEADROOM = 1.5
+_BUFSIZE_MIN = 4.0
 
 
 def _descriptor(sinfo: _BaseStreamInfo) -> StreamDescriptor:
@@ -88,6 +96,61 @@ def resolve_descriptors(timeout: float = _RESOLVE_TIMEOUT) -> list[StreamDescrip
     sinfos = resolve_streams(timeout)
     descriptors = [_descriptor(sinfo) for sinfo in sinfos]
     return sorted(descriptors, key=lambda descriptor: descriptor.identity.as_tuple())
+
+
+def derive_bufsize(window: float) -> float:
+    """Return the buffer size covering a display window of ``window`` seconds.
+
+    Parameters
+    ----------
+    window : float
+        Widest time window the display may show, in seconds.
+
+    Returns
+    -------
+    bufsize : float
+        Buffer size in seconds, a whole number, at least ``window``.
+
+    Raises
+    ------
+    OverflowError
+        If ``window`` is finite but above ~1.198e308, where the headroom multiplication
+        overflows to infinity and the rounding then refuses it. Not reachable from the
+        interface, and recorded because the check below does not cover it.
+    TypeError
+        If ``window`` is not a real number, e.g. ``'5'`` or ``None``, raised by the
+        finiteness check. A :class:`bool` is a real number and is therefore *accepted*,
+        unlike in :meth:`~mne_lsl.viewer.display.DisplayControls.set_state`, which
+        refuses one explicitly because ``True`` would clamp to a plausible value.
+    ValueError
+        If ``window`` is not a finite, strictly positive number: a non-positive one
+        allocates an empty buffer whose every read returns nothing, and a non-finite one
+        raises from inside the buffer allocation of
+        :meth:`~mne_lsl.stream.StreamLSL.connect`, after the inlet is already open.
+
+    Notes
+    -----
+    The buffer must cover the window: a window wider than the buffer is not an error --
+    ``get_data`` silently returns the shorter buffer -- and the display then draws over
+    part of its time axis for the rest of the session, with nothing in the interface to
+    explain it. The size is therefore derived from the widest window the control bar can
+    select, not from the current one.
+
+    The result is a whole number of seconds so that the same value is legal for an
+    irregularly sampled stream, whose buffer size is a sample count:
+    :func:`create_stream` refuses a fractional value there, and one batch of connections
+    carries a single buffer size for regular and event streams alike.
+    """
+    if not isfinite(window) or window <= 0:
+        raise ValueError(
+            f"The time window must be a finite, strictly positive number of seconds, "
+            f"got {window}."
+        )
+    # ponytail: derived from the widest selectable window, thus every stream pays for a
+    # window nobody may ever select -- 31.5 MB per stream at 256 channels and 1024 Hz,
+    # plus the same duration again in liblsl's own ring. The upgrade is to teach the
+    # display control bar a runtime maximum, then derive from the window actually shown.
+    return float(ceil(max(_BUFSIZE_MIN, window * _BUFSIZE_HEADROOM)))
 
 
 def create_stream(descriptor: StreamDescriptor, bufsize: float) -> BaseStream:
@@ -254,3 +317,47 @@ def probe_channels(descriptor: StreamDescriptor) -> list[str]:
         return list(sinfo.get_channel_info()["ch_names"])
     finally:
         inlet._del()
+
+
+def stream_identity(stream: BaseStream) -> StreamIdentity:
+    """Return the exact identity of a connected stream.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        A connected stream.
+
+    Returns
+    -------
+    identity : StreamIdentity
+        The ``(name, stype, source_id)`` triple, as the opened inlet reports it.
+
+    Raises
+    ------
+    RuntimeError
+        If the stream is not connected. The three fields are only guaranteed to be set
+        once :meth:`~mne_lsl.stream.StreamLSL.connect` has back-filled them from the
+        inlet it opened.
+    TypeError
+        If the stream is not an LSL stream, i.e. if it carries no LSL identity.
+
+    Notes
+    -----
+    This lives here because the identity is LSL-specific: it is read from attributes
+    which :class:`~mne_lsl.stream.BaseStream` does not define, and this module is the
+    only one allowed to name :class:`~mne_lsl.stream.StreamLSL`. It exists for the
+    borrowed-stream path, where the viewer is handed a stream instead of a descriptor.
+    """
+    if not isinstance(stream, StreamLSL):
+        raise TypeError(
+            "The viewer can only open a document for an LSL stream, which carries an "
+            f"identity, got {type(stream).__name__}."
+        )
+    if not stream.connected:
+        raise RuntimeError(
+            "The identity of a stream is only known once it is connected: the name, "
+            "the type and the source ID are back-filled from the inlet it opened."
+        )
+    return StreamIdentity(
+        name=stream.name, stype=stream.stype, source_id=stream.source_id
+    )

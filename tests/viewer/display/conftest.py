@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pyqtgraph as pg
 import pytest
-from qtpy.QtCore import QEvent
 from qtpy.QtWidgets import QToolButton
 
 from mne_lsl.viewer.display import TraceDisplay
@@ -26,7 +25,9 @@ def push(
 
 
 @pytest.fixture
-def make_display(app: QApplication) -> Generator[Callable[[StreamLSL], TraceDisplay]]:
+def make_display(
+    flush_deletes: Callable[..., None],
+) -> Generator[Callable[[StreamLSL], TraceDisplay]]:
     """Yield a factory building trace displays, closed at teardown.
 
     Same shape as the 'lsl_stream' factory, and for the same reason: the tests needing a
@@ -46,12 +47,7 @@ def make_display(app: QApplication) -> Generator[Callable[[StreamLSL], TraceDisp
     for widget in reversed(created):
         widget.stop()
         widget.close()
-        widget.deleteLater()
-    # 'processEvents' does not deliver a 'DeferredDelete' outside a running event loop,
-    # so without this the displays were only ever freed by refcounting and the C++
-    # destruction path -- which is what surfaces a use-after-delete -- never ran.
-    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-    app.processEvents()
+    flush_deletes(*reversed(created))
     created.clear()
 
 

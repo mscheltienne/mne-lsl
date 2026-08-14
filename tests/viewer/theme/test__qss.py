@@ -11,6 +11,8 @@ from mne_lsl.viewer._bootstrap import import_ads
 from mne_lsl.viewer.theme import _ADS_ICONS, _ADS_QSS, _QSS
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from qtpy.QtWidgets import QApplication
 
 _HEX = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
@@ -76,7 +78,7 @@ def test_ads_icons() -> None:
         assert name.startswith("mdi6."), name
 
 
-def test_sheets_parse(app: QApplication) -> None:
+def test_sheets_parse(app: QApplication, flush_deletes: Callable[..., None]) -> None:
     """Test that Qt parses both style sheets without complaining."""
     messages: list[str] = []
 
@@ -93,8 +95,7 @@ def test_sheets_parse(app: QApplication) -> None:
         widget.ensurePolished()
         app.processEvents()
         widget.close()
-        widget.deleteLater()
-        app.processEvents()
+        flush_deletes(widget)
     finally:
         qInstallMessageHandler(previous_handler)
         app.setStyleSheet(previous_sheet)

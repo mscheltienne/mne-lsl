@@ -42,7 +42,7 @@ from qtpy.QtWidgets import (
     QWidgetAction,
 )
 
-from ..theme import icon, theme_controller, tokens, type_color
+from ..theme import follow_theme, icon, theme_controller, tokens, type_color
 from ..widgets import AnimatedSegmentedControl
 from ._model import (
     CH_TYPES,
@@ -445,9 +445,9 @@ class ChannelsPage(QWidget):
 
         # Connected by the page itself rather than by the shell: the delegate icons bake
         # their color, thus forgetting the connection leaves them stale after a flip.
-        self._follow_theme(True)
+        follow_theme(self, self.retheme, True)
 
-    # -- public surface -------------------------------------------------------------
+    # -- public surface ----------------------------------------------------------------
     @property
     def model(self) -> ChannelModel:
         """Channel model the page presents; owned by the stream document."""
@@ -482,25 +482,15 @@ class ChannelsPage(QWidget):
         """
         super().showEvent(ev)
         if not self._following_theme:
-            self._follow_theme(True)
+            follow_theme(self, self.retheme, True)
             self.retheme()  # the mode may have flipped while the page was closed
 
     def closeEvent(self, ev: QCloseEvent) -> None:
         """Drop the theme connection, as the controller is a process singleton."""
-        self._follow_theme(False)
+        follow_theme(self, self.retheme, False)
         super().closeEvent(ev)
 
-    def _follow_theme(self, follow: bool) -> None:
-        """Connect or drop the theme connection; a no-op if it is already so."""
-        if follow == self._following_theme:
-            return
-        if follow:
-            theme_controller.theme_changed.connect(self.retheme)
-        else:
-            theme_controller.theme_changed.disconnect(self.retheme)
-        self._following_theme = follow
-
-    # -- toolbar --------------------------------------------------------------------
+    # -- toolbar -----------------------------------------------------------------------
     def _build_toolbar(self) -> QWidget:
         """Build the compact two-row toolbar above the list."""
         bar = QWidget()
@@ -583,7 +573,7 @@ class ChannelsPage(QWidget):
         self._filter_btn.setMenu(menu)
         return self._filter_btn
 
-    # -- inspector ------------------------------------------------------------------
+    # -- inspector ---------------------------------------------------------------------
     def _build_inspector(self) -> QFrame:
         """Build the contextual inspector, shown only while a channel is selected."""
         frame = QFrame()
@@ -664,7 +654,7 @@ class ChannelsPage(QWidget):
         )
         self._reset_btn.setIcon(icon("mdi6.backup-restore"))
 
-    # -- selection ------------------------------------------------------------------
+    # -- selection ---------------------------------------------------------------------
     def _selected_rows(self) -> list[int]:
         """Return the selected display rows, ascending and deduplicated.
 
@@ -752,7 +742,7 @@ class ChannelsPage(QWidget):
             text += f" · +{len(channels) - _MAX_ORIGINALS} more"
         return f"orig: {text}"
 
-    # -- inspector edits, applied to the whole selection -----------------------------
+    # -- inspector edits, applied to the whole selection -------------------------------
     def _write(self, write: Callable[[], object]) -> object:
         """Run a model write, report a refusal and re-sync the inspector.
 
@@ -875,7 +865,7 @@ class ChannelsPage(QWidget):
         except ValueError as error:
             QMessageBox.warning(self, "Rename channel", str(error))
 
-    # -- filtering and status --------------------------------------------------------
+    # -- filtering and status ----------------------------------------------------------
     def _clear_filters(self) -> None:
         """Reset the search box and the three filter combo boxes."""
         self._search.clear()
@@ -934,7 +924,7 @@ class ChannelsPage(QWidget):
             f"{selected} selected · {self._shown}/{self._model.rowCount()}"
         )
 
-    # -- model and theme handlers ----------------------------------------------------
+    # -- model and theme handlers ------------------------------------------------------
     def _on_data_changed(self, *_args) -> None:
         """Re-filter and refresh the inspector after a model edit."""
         self._apply_filter()
@@ -965,7 +955,7 @@ class ChannelsPage(QWidget):
         self._reflect_selection()
         self._update_status()
 
-    # -- context menu, a fast path beside the inspector ------------------------------
+    # -- context menu, a fast path beside the inspector --------------------------------
     def _context_menu(self, pos: QPoint) -> None:
         """Open the selection context menu at ``pos``.
 

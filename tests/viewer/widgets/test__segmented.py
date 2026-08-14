@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from qtpy.QtCore import QEvent, Qt
+from qtpy.QtCore import Qt
 from qtpy.QtTest import QTest
 from qtpy.QtWidgets import QButtonGroup
 
 from mne_lsl.viewer.widgets import AnimatedSegmentedControl
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from qtpy.QtWidgets import QApplication
 
@@ -23,14 +23,12 @@ _ITEMS = [
 
 @pytest.fixture
 def segmented(
-    app: QApplication,
+    flush_deletes: Callable[..., None],
 ) -> Generator[tuple[AnimatedSegmentedControl, list[str]]]:
     """Yield an Order control and the list of values its 'changed' signal carried.
 
-    Teardown really destroys the C++ object: 'processEvents' does not deliver a
-    'DeferredDelete' outside a running event loop, so 'deleteLater' alone left every
-    fixture widget alive until the interpreter dropped its last reference, and the
-    use-after-delete a stale connection causes was therefore never exercised.
+    The teardown really destroys the C++ object -- see the ``flush_deletes`` fixture --
+    so that the use-after-delete a stale connection causes is exercised.
     """
     widget = AnimatedSegmentedControl(_ITEMS)
     widget.resize(240, 26)
@@ -38,9 +36,7 @@ def segmented(
     widget.changed.connect(emitted.append)
     yield widget, emitted
     widget.close()
-    widget.deleteLater()
-    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-    app.processEvents()
+    flush_deletes(widget)
 
 
 def test_starts_on_the_first_segment(

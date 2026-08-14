@@ -10,7 +10,7 @@ from qtpy.QtGui import QColor, QPalette
 from mne_lsl.viewer.theme import apply_theme, build_qpalette, tokens
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from qtpy.QtWidgets import QApplication
 
@@ -20,14 +20,13 @@ _MODES = ("light", "dark")
 
 
 @pytest.fixture
-def plot(app: QApplication) -> Generator[pg.PlotWidget, None, None]:
-    """Yield a plot widget holding one curve, closed afterwards."""
+def plot(flush_deletes: Callable[..., None]) -> Generator[pg.PlotWidget, None, None]:
+    """Yield a plot widget holding one curve, closed and destroyed afterwards."""
     widget = pg.PlotWidget()
     widget.plot([0, 1, 2], [0, 1, 0])
     yield widget
     widget.close()
-    widget.deleteLater()
-    app.processEvents()
+    flush_deletes(widget)
 
 
 def test_build_qpalette_modes_differ() -> None:

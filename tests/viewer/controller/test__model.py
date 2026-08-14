@@ -73,7 +73,7 @@ def _stream_units(stream: StreamLSL) -> list[tuple[int, int]]:
     return stream.get_channel_units(picks=list(range(stream.info["nchan"])))
 
 
-# -- index spaces and the translation site ------------------------------------------
+# -- index spaces and the translation site ---------------------------------------------
 def test_construction_is_acquisition_order(
     model: ChannelModel,
     mixed_stream: StreamLSL,
@@ -192,7 +192,7 @@ def test_row_count_is_zero_for_a_valid_parent(model: ChannelModel) -> None:
     assert model.rowCount(model.index(0, 0)) == 0
 
 
-# -- ordering ------------------------------------------------------------------------
+# -- ordering --------------------------------------------------------------------------
 def test_order_by_acquisition(model: ChannelModel) -> None:
     """Test that the acquisition command restores the acquisition order."""
     model.order_by("alphabetical")
@@ -370,7 +370,7 @@ def test_order_by_does_not_renumber_the_acquisition_index(model: ChannelModel) -
     assert trace_color(before["Fp1"], "dark") == trace_color(0, "dark")
 
 
-# -- visibility ----------------------------------------------------------------------
+# -- visibility ------------------------------------------------------------------------
 def test_set_visible_bulk_emits_one_data_changed(
     model: ChannelModel, emissions: Callable[[ChannelModel], Emissions]
 ) -> None:
@@ -498,7 +498,7 @@ def test_hide_all_then_visible_acq_indices_is_empty(model: ChannelModel) -> None
     assert model.hidden_channels() == list(range(8))
 
 
-# -- metadata writes -----------------------------------------------------------------
+# -- metadata writes -------------------------------------------------------------------
 def test_set_type_writes_the_stream(
     model: ChannelModel,
     mixed_stream: StreamLSL,
@@ -1185,7 +1185,7 @@ def test_orig_is_never_written(model: ChannelModel) -> None:
     assert [by_acq[acq].orig for acq in range(8)] == before
 
 
-# -- refresh and the stream boundary --------------------------------------------------
+# -- refresh and the stream boundary ---------------------------------------------------
 def test_refresh_picks_up_an_external_edit(
     model: ChannelModel, mixed_stream: StreamLSL
 ) -> None:
@@ -1438,7 +1438,7 @@ def test_no_display_import(
         assert (segments | identifiers).isdisjoint(_FORBIDDEN), name
 
 
-# -- unit registry --------------------------------------------------------------------
+# -- unit registry ---------------------------------------------------------------------
 def test_unit_label_round_trips() -> None:
     """Test that every offered pair is labelled by the label it resolves back from.
 

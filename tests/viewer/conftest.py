@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
     from qtpy.QtWidgets import QApplication
 
+    from mne_lsl.viewer._window import ViewerWindow
+    from mne_lsl.viewer.backend import StreamDescriptor
     from mne_lsl.viewer.theme import ThemeController
     from mne_lsl.viewer.widgets import EditableReadout
 
@@ -62,6 +64,9 @@ _PUSH_DEADLINE = 10.0
 # Acquisition period of the connected stream, in seconds. Short, so that a pushed chunk
 # is picked up without the test having to wait a default 1 ms x n cycles.
 _ACQUISITION_DELAY = 0.01
+# Bound on the wait for a freshly created outlet to become resolvable. Generous, as it
+# is only ever reached when discovery is broken; a local outlet answers instantly.
+_RESOLVE_DEADLINE = 10.0
 
 
 @pytest.fixture(scope="session")
@@ -189,6 +194,104 @@ def stream(default_stream: tuple[StreamLSL, Callable[..., None]]) -> StreamLSL:
 
 
 @pytest.fixture
+def descriptor() -> Callable[..., StreamDescriptor]:
+    """Return a factory building a descriptor out of plain values.
+
+    No outlet is created, and the default 'source_id' is a uuid4, thus the identity is
+    never on the network: this is the fixture for the logic which only moves descriptors
+    around -- the identity dataclasses, the generation checks of the workers, the
+    launcher table, the failure path of a connection -- while 'outlets' is the one to
+    use when the stream has to actually answer.
+    """
+    # Nested for the same reason as in 'app': this conftest is imported even on a host
+    # with no Qt binding, where 'mne_lsl.viewer' cannot be imported at all.
+    from mne_lsl.viewer.backend import StreamDescriptor, StreamIdentity
+
+    def _make(
+        name: str = "mne-lsl-viewer-absent",
+        stype: str = "eeg",
+        source_id: str | None = None,
+        n_channels: int = 4,
+        sfreq: float = 100.0,
+        hostname: str = "host-1",
+        dtype: str = "float32",
+    ) -> StreamDescriptor:
+        """Return one descriptor; every field has a default a test can override."""
+        return StreamDescriptor(
+            identity=StreamIdentity(
+                name=name,
+                stype=stype,
+                source_id=str(uuid.uuid4()) if source_id is None else source_id,
+            ),
+            n_channels=n_channels,
+            sfreq=sfreq,
+            hostname=hostname,
+            dtype=dtype,
+        )
+
+    return _make
+
+
+@pytest.fixture
+def outlets(
+    request: pytest.FixtureRequest,
+) -> Generator[Callable[..., StreamDescriptor], None, None]:
+    """Yield a factory creating resolvable LSL outlets, destroyed at teardown.
+
+    The outlets never push a sample: discovery, the channel probe and
+    'StreamLSL.connect()' all need an outlet to exist and to answer, not to produce
+    data, so a silent outlet covers every assertion which needs one without a player
+    subprocess or a testing dataset.
+
+    Each outlet is named after the requesting test and gets a uuid4 'source_id', so
+    concurrent jobs sharing the link can never collide, and the factory returns only
+    once 'resolve_descriptors' actually sees the identity -- the discovery equivalent of
+    the player fixture's status handshake.
+    """
+    # Nested for the same reason as in 'app', see the comment there.
+    from mne_lsl.viewer.backend import resolve_descriptors
+
+    created: list[tuple[StreamOutlet, StreamInfo]] = []
+
+    def _start(
+        n_channels: int = 4,
+        sfreq: float = 100.0,
+        stype: str = "eeg",
+        ch_names: list[str] | None = None,
+        name: str | None = None,
+        source_id: str | None = None,
+    ) -> StreamDescriptor:
+        """Create one outlet and return its descriptor, once it is resolvable.
+
+        'ch_names' defaults to generated names; an **empty** list publishes no channel
+        description at all, which is the degenerate case a probe must still handle.
+        """
+        name = name if name is not None else f"mne-lsl-viewer-{request.node.name}"
+        source_id = source_id if source_id is not None else str(uuid.uuid4())
+        sinfo = StreamInfo(name, stype, n_channels, sfreq, "float32", source_id)
+        if ch_names is None:
+            ch_names = [f"ch{k}" for k in range(n_channels)]
+        if len(ch_names) != 0:
+            sinfo.set_channel_names(ch_names)
+        outlet = StreamOutlet(sinfo)
+        created.append((outlet, sinfo))
+        identity = (name, stype, source_id)
+        deadline = time.monotonic() + _RESOLVE_DEADLINE
+        while time.monotonic() < deadline:
+            for descriptor in resolve_descriptors(1.0):
+                if descriptor.identity.as_tuple() == identity:
+                    return descriptor
+        pytest.fail(f"The outlet {identity} never became resolvable.")
+
+    yield _start
+    # teardown in the fixture rather than in the test bodies, so a failing assertion
+    # still destroys the outlets instead of leaving them on the network.
+    for outlet, _ in reversed(created):
+        outlet._del()
+    created.clear()
+
+
+@pytest.fixture
 def controller(app: QApplication) -> Generator[ThemeController, None, None]:
     """Yield the module-singleton ThemeController, restoring its state afterwards.
 
@@ -214,6 +317,58 @@ def controller(app: QApplication) -> Generator[ThemeController, None, None]:
         theme_controller._setting,
         theme_controller._mode,
     ) = state
+
+
+@pytest.fixture
+def flush_deletes(app: QApplication) -> Callable[..., None]:
+    """Return a callable deleting Qt objects and running their C++ destruction.
+
+    Returns
+    -------
+    flush : callable
+        Called with the objects to delete, in the order they must be destroyed.
+
+    Notes
+    -----
+    ``deleteLater`` posts a ``DeferredDelete`` event, which ``processEvents`` does *not*
+    deliver outside a running event loop: without the explicit ``sendPostedEvents`` an
+    object is only ever freed by refcounting and the C++ destruction path -- the one
+    which surfaces a use-after-delete -- never runs at all. That is a three-line idiom
+    which every fixture of this package was repeating, and which several of them got
+    wrong by omitting the flush, so it lives here once.
+    """
+    # Nested for the same reason as in 'app': this conftest is imported even on a host
+    # with no Qt binding, where qtpy may not be importable at module level.
+    from qtpy.QtCore import QEvent
+
+    def _flush(*objects: object) -> None:
+        """Delete ``objects``, then deliver the deferred deletions."""
+        for obj in objects:
+            obj.deleteLater()
+        app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.processEvents()
+
+    return _flush
+
+
+@pytest.fixture
+def window(
+    app: QApplication, flush_deletes: Callable[..., None]
+) -> Generator[ViewerWindow, None, None]:
+    """Yield a viewer window, closed and deleted afterwards.
+
+    The 'close()' is what stops the two worker threads and tears every open document
+    down, as nothing else does on a path which never enters an event loop.
+    """
+    # Nested for the same reason as in 'app', see the comment there; and this conftest
+    # may not import qtpy at module level either.
+    from mne_lsl.viewer._window import ViewerWindow
+
+    built = ViewerWindow()
+    built.resize(1200, 700)
+    yield built
+    built.close()
+    flush_deletes(built)
 
 
 @pytest.fixture

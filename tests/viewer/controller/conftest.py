@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from qtpy.QtCore import QEvent
 
 from mne_lsl.viewer.controller import ChannelModel, ChannelsPage
 
@@ -11,7 +10,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
     from qtpy.QtCore import QModelIndex
-    from qtpy.QtWidgets import QApplication
 
     from mne_lsl.stream import StreamLSL
 
@@ -93,13 +91,13 @@ def mixed_stream(
 
 
 @pytest.fixture
-def model(app: QApplication, mixed_stream: StreamLSL) -> Generator[ChannelModel]:
+def model(
+    mixed_stream: StreamLSL, flush_deletes: Callable[..., None]
+) -> Generator[ChannelModel]:
     """Yield a channel model over the mixed stream."""
     built = ChannelModel(mixed_stream)
     yield built
-    built.deleteLater()
-    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-    app.processEvents()
+    flush_deletes(built)
 
 
 @pytest.fixture
@@ -109,7 +107,9 @@ def emissions() -> Callable[[ChannelModel], Emissions]:
 
 
 @pytest.fixture
-def make_page(app: QApplication) -> Generator[Callable[[ChannelModel], ChannelsPage]]:
+def make_page(
+    flush_deletes: Callable[..., None],
+) -> Generator[Callable[[ChannelModel], ChannelsPage]]:
     """Yield a factory building Channels pages, closed at teardown.
 
     Same shape as the trace display's factory: a page built in a test body needs the
@@ -127,12 +127,7 @@ def make_page(app: QApplication) -> Generator[Callable[[ChannelModel], ChannelsP
     yield _make
     for widget in reversed(created):
         widget.close()
-        widget.deleteLater()
-    # 'processEvents' does not deliver a 'DeferredDelete' outside a running event loop,
-    # so without this the pages were only ever freed by refcounting and the C++
-    # destruction path -- which is what surfaces a use-after-delete -- never ran.
-    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-    app.processEvents()
+    flush_deletes(*reversed(created))
     created.clear()
 
 

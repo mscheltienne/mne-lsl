@@ -7,6 +7,7 @@ before it knows whether a Qt binding is installed, so importing it must never im
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 import sysconfig
 import threading
@@ -23,6 +24,12 @@ _INSTALL_HINT = (
     "Install one of the complete Qt stacks: 'pip install mne-lsl[pyqt6]' or "
     "'pip install mne-lsl[pyside6]'."
 )
+# Runtime dependencies of the viewer besides the Qt binding itself, i.e. the rest of the
+# 'pyqt6' / 'pyside6' extra. The Qt-ADS distribution is binding-specific and is added by
+# '_ensure_qt_stack'.
+_STACK_MODULES = ("darkdetect", "pyqtgraph", "qtawesome", "superqt")
+# Qt-ADS module name per Qt binding, see 'import_ads'.
+_ADS_MODULES = {"PyQt6": "PyQt6Ads", "PySide6": "PySide6QtAds"}
 
 # Strong reference to the application created by 'ensure_application'. PyQt6/sip
 # destroys the underlying C++ application together with its last Python reference, so a
@@ -56,6 +63,42 @@ def _ensure_qt_binding() -> str:
             f"{_INSTALL_HINT}"
         ) from error
     return qtpy.API_NAME
+
+
+def _ensure_qt_stack(api_name: str) -> None:
+    """Raise if the Qt binding is installed but the rest of the extra is not.
+
+    Parameters
+    ----------
+    api_name : str
+        Name of the Qt binding qtpy resolved, e.g. ``'PyQt6'``.
+
+    Raises
+    ------
+    ImportError
+        If a module of the viewer's Qt stack is missing, naming every missing one.
+
+    Notes
+    -----
+    ``pip install mne-lsl`` followed by ``pip install PyQt6`` is a common half-install,
+    and the binding guard passes on it: importing the viewer then failed on whichever
+    module happened to be reached first, e.g. ``No module named 'PyQt6Ads'``, naming
+    neither ``mne-lsl`` nor the extra which provides it.
+
+    The modules are looked up rather than imported: this runs on the import path of
+    every entry point, and importing the stack twice is neither free nor this
+    function's job.
+    """
+    ads = _ADS_MODULES.get(api_name)
+    modules = _STACK_MODULES if ads is None else (*_STACK_MODULES, ads)
+    missing = [name for name in modules if importlib.util.find_spec(name) is None]
+    if not missing:
+        return
+    raise ImportError(
+        f"'mne_lsl.viewer' requires {', '.join(sorted(missing))}, which the "
+        f"environment does not provide, although the Qt binding {api_name} is "
+        f"installed. {_INSTALL_HINT}"
+    )
 
 
 def assert_binding_coherence() -> None:
@@ -187,6 +230,33 @@ def install_exception_policy() -> None:
     """
     sys.excepthook = _excepthook
     threading.excepthook = _thread_excepthook
+
+
+def configure_docking() -> None:
+    """Set the process-wide Qt Advanced Docking System configuration flags.
+
+    Must be called before the first ``CDockManager`` is constructed: the flags are
+    static and the constructor consumes them. Idempotent, and safe to call again
+    afterwards as long as the values do not change.
+
+    Notes
+    -----
+    ``FocusHighlighting`` is not merely read at construction: a manager built while it
+    was off, with the flag switched on afterwards, crashes the process on the next
+    ``addDockWidget`` -- the constructor builds the focus controller which the code
+    paths guarded by the flag then dereference. The two XML flags keep ``saveState()`` a
+    readable byte string rather than the zlib-compressed default, which is what a saved
+    configuration stores.
+    """
+    ads = import_ads()
+    flags = ads.CDockManager.eConfigFlag
+    for flag, value in (
+        (flags.FocusHighlighting, True),
+        (flags.EqualSplitOnInsertion, True),
+        (flags.XmlCompressionEnabled, False),
+        (flags.XmlAutoFormattingEnabled, True),
+    ):
+        ads.CDockManager.setConfigFlag(flag, value)
 
 
 def import_ads() -> ModuleType:

@@ -59,7 +59,7 @@ def connector(
     obj.stop()
 
 
-# -- import rules -------------------------------------------------------------------
+# -- import rules ----------------------------------------------------------------------
 def test_no_lsl_import(
     module_scan: Callable[[ModuleType], tuple[set[str], set[str]]],
 ) -> None:
@@ -219,7 +219,7 @@ def test_release_swallows_a_failure(caplog: pytest.LogCaptureFixture) -> None:
     assert "not connected" in caplog.text
 
 
-# -- Discovery ----------------------------------------------------------------------
+# -- Discovery -------------------------------------------------------------------------
 def test_discovery_empty(
     discovery: Discovery, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -392,7 +392,7 @@ def test_discovery_end_to_end(
     assert tags == ["checking", "updated"]
 
 
-# -- Connector ----------------------------------------------------------------------
+# -- Connector -------------------------------------------------------------------------
 def test_connector_releases_a_stale_stream(
     connector: Connector, descriptor: Callable[..., StreamDescriptor]
 ) -> None:

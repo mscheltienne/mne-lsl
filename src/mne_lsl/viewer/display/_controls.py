@@ -35,7 +35,10 @@ if TYPE_CHECKING:
 # notch feels the same at 0.1× as at 10×.
 _ROWS = (2, 60)
 _ROWS_STEP = 1
-_WINDOW = (0.5, 20.0)
+# Public, and the only declaration of the selectable time window: the stream buffer is
+# derived from the widest window this bar can reach, and a second literal elsewhere is
+# how a buffer narrower than the window ships.
+WINDOW_RANGE = (0.5, 20.0)
 _WINDOW_STEP = 0.5
 _SCALE = (0.05, 50.0)
 _SCALE_STEP = 1.15
@@ -159,7 +162,7 @@ class DisplayControls(QToolBar):
         self.retint_icons()  # bake the initial icon colors from the active theme
         self._refresh_readouts()
 
-    # -- construction -------------------------------------------------------------
+    # -- construction ------------------------------------------------------------------
     def _add_stepper(
         self,
         prefix_icon: str,
@@ -220,7 +223,7 @@ class DisplayControls(QToolBar):
         self._window_readout.set_text(f"{self._window:g}s")
         self._scale_readout.set_text(f"{self._scale:g}×")
 
-    # -- state --------------------------------------------------------------------
+    # -- state -------------------------------------------------------------------------
     @property
     def state(self) -> dict[str, Any]:
         """Current display state, one entry per control."""
@@ -323,9 +326,11 @@ class DisplayControls(QToolBar):
         Parameters
         ----------
         value : float
-            Window duration, clamped to ``[0.5, 20]`` seconds.
+            Window duration in seconds, clamped to :data:`WINDOW_RANGE` -- named and not
+            spelled out, as the buffer size of every connection is derived from the same
+            bound and a second spelling of it is what the shared name exists to prevent.
         """
-        window = float(min(max(_WINDOW[0], value), _WINDOW[1]))
+        window = float(min(max(WINDOW_RANGE[0], value), WINDOW_RANGE[1]))
         changed = window != self._window
         self._window = window
         self._refresh_readouts()
@@ -373,7 +378,7 @@ class DisplayControls(QToolBar):
         for setter, name in self._icon_setters:
             setter(icon(name))
 
-    # -- slots --------------------------------------------------------------------
+    # -- slots -------------------------------------------------------------------------
     def _on_color_index(self, index: int) -> None:
         """Publish the color mode of the combo index."""
         self._color_mode = _COLOR_MODES[index][1]
