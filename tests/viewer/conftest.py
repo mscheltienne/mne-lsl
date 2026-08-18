@@ -83,6 +83,21 @@ def app() -> Generator[QApplication, None, None]:
 
 
 @pytest.fixture
+def config_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Point 'Path.home()' at a temporary directory and return it.
+
+    The configuration directory is computed from 'Path.home()' on every call precisely
+    so that it can be redirected here, instead of being frozen into a module constant at
+    import time.
+
+    This fixture lives here rather than in 'backend/' because the window, the launcher
+    and the persistence layer all need it.
+    """
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    return tmp_path
+
+
+@pytest.fixture
 def lsl_stream(
     request: pytest.FixtureRequest,
 ) -> Generator[Callable[..., tuple[StreamLSL, Callable[..., None]]]]:
@@ -215,6 +230,7 @@ def descriptor() -> Callable[..., StreamDescriptor]:
         sfreq: float = 100.0,
         hostname: str = "host-1",
         dtype: str = "float32",
+        uid: str | None = None,
     ) -> StreamDescriptor:
         """Return one descriptor; every field has a default a test can override."""
         return StreamDescriptor(
@@ -227,6 +243,9 @@ def descriptor() -> Callable[..., StreamDescriptor]:
             sfreq=sfreq,
             hostname=hostname,
             dtype=dtype,
+            # a uuid4 by default, as liblsl's own is per outlet *instance*: two
+            # descriptors built by this factory must never share a probe-cache key.
+            uid=str(uuid.uuid4()) if uid is None else uid,
         )
 
     return _make

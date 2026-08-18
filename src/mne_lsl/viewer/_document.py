@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QSize, Qt, Signal
@@ -18,11 +19,13 @@ from qtpy.QtWidgets import (
 
 from ..utils.logs import logger
 from ._bootstrap import import_ads
-from .controller import ChannelModel, ChannelsPage
+from .controller import ChannelModel, ChannelsPage, unit_choices, unit_label
 from .display import TraceDisplay
 from .theme import _ICON_PX, icon, theme_controller, tokens
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from ..stream import BaseStream
     from .backend import StreamIdentity
 
@@ -105,6 +108,12 @@ class StreamDocument(ads.CDockWidget):
         self._owns_stream = bool(owns_stream)
         self._frozen = False
         self._torn = False
+        # Last width the controller panel had while it was shown. A laid-out
+        # 'QSplitter' reports a hidden child as 0 pixels wide -- measured -- so this is
+        # the only place the number a configuration has to save stays readable. The
+        # splitter's own memory is what brings the panel back during the session; this
+        # exists for serialization alone, see 'controller_width'.
+        self._panel_width = _PANEL_SIZES[0]
 
         # a document docks and tabs inside the main window for this milestone; it does
         # not become a separate top-level window. The only call there is: closable,
@@ -300,18 +309,62 @@ class StreamDocument(ads.CDockWidget):
 
         Notes
         -----
-        No width is remembered here, on purpose. Measured: a
+        No width is re-applied here, on purpose. Measured: a
         :class:`~qtpy.QtWidgets.QSplitter` restores a hidden child to the width it had,
         whatever the user dragged it to and even across a resize of the window while it
-        was hidden. Saving and re-applying the sizes around this toggle is therefore
-        code no behaviour can distinguish. What *would* lose the width is an explicit
-        ``setSizes`` while the panel is hidden.
+        was hidden. Re-applying the sizes around this toggle is therefore code no
+        behaviour can distinguish.
+
+        The width is nonetheless *recorded* on the way down, for
+        :attr:`controller_width` alone: a laid-out splitter reports a hidden child as 0
+        wide, so a configuration saved with the panel hidden would otherwise store a
+        zero-width panel and restore one which stays invisible when toggled back on.
         """
         visible = bool(visible)
+        if not visible:
+            # 'or' because this may run twice: the second call reads the 0 the first one
+            # produced, and the number to keep is the one from before the panel went
+            # away.
+            self._panel_width = self._splitter.sizes()[0] or self._panel_width
         self._panel.setVisible(visible)
         blocked = self._controller_button.blockSignals(True)
         self._controller_button.setChecked(visible)
         self._controller_button.blockSignals(blocked)
+
+    @property
+    def controller_width(self) -> int:
+        """Width of the controller panel in pixels, as a configuration saves it.
+
+        Notes
+        -----
+        The splitter's live value while the panel is shown, and the width it had before
+        it was hidden otherwise: a laid-out :class:`~qtpy.QtWidgets.QSplitter` reports a
+        hidden child as 0 wide, and saving that restores a panel the user cannot get
+        back by toggling it.
+        """
+        if not self.controller_visible:
+            return self._panel_width
+        return self._splitter.sizes()[0]
+
+    def set_controller_width(self, width: int) -> None:
+        """Give the controller panel ``width`` pixels, the display taking the rest.
+
+        Parameters
+        ----------
+        width : int
+            Width of the controller panel in pixels, clamped to zero from below.
+
+        Notes
+        -----
+        Applied to the splitter *and* recorded, so that a restore which hides the panel
+        immediately afterwards still saves the width it was asked for. The total is read
+        back from the splitter rather than from the widget, so the display keeps what
+        the layout had given the pair.
+        """
+        width = max(0, int(width))
+        self._panel_width = width or self._panel_width
+        total = sum(self._splitter.sizes())
+        self._splitter.setSizes([width, max(0, total - width)])
 
     def status_fields(self) -> dict[str, str]:
         """Return the status-bar fields describing the current state of the document.
@@ -358,6 +411,365 @@ class StreamDocument(ads.CDockWidget):
         fields["history"] = f"{self._stream.n_buffer / sfreq:g} s history"
         fields["latency"] = "No processing • 0 ms"
         return fields
+
+    # -- the serializable state --------------------------------------------------------
+    def _channels(self) -> list:
+        """Return the channel records in presentation order."""
+        return [self.model.channel(row) for row in range(self.model.rowCount())]
+
+    def _rows_by_name(self) -> dict[str, int]:
+        """Return the current display row of every channel, keyed by acquisition name.
+
+        Notes
+        -----
+        Rebuilt at every step of :meth:`apply_state` rather than computed once: the
+        acquisition name is stable across every edit -- a rename moves
+        :attr:`~mne_lsl.viewer.controller.Channel.name`, never
+        ``Channel.orig.name`` -- but the *row* moves as soon as the saved order is
+        applied, and a map built before that reorder silently hides the wrong channels
+        afterwards.
+        """
+        return {
+            self.model.channel(row).orig.name: row
+            for row in range(self.model.rowCount())
+        }
+
+    def capture_state(self) -> dict[str, Any]:
+        """Return the serializable presentation state of this document.
+
+        Returns
+        -------
+        state : dict
+            The document's slot and identity, the channel edits as deltas against the
+            acquisition metadata, the controller geometry and the display settings.
+
+        Notes
+        -----
+        Every channel key is the **acquisition** name, never the edited one: that key
+        set doubles as the availability contract of the configuration, so keying it by a
+        renamed channel would make the configuration both unmatchable against a stream
+        and unloadable against its own channel list.
+
+        Deltas and never tables. A 256-channel document with no edit at all carries four
+        empty containers and one name list, and ``channel_order`` is omitted entirely
+        when it equals the acquisition order -- a full name list which says nothing is
+        what turns an inspectable file into an unreadable one.
+
+        Nothing live is captured and the stream is never read: the channel records
+        already cache every field, and they cannot diverge because the model overwrites
+        them wholesale after each of its own writes. That is also what lets a document
+        whose stream went away still be saved, which is the point of a configuration
+        describing a *desired* workspace. The frozen state, the buffer size, the render
+        clock and the acquisition baseline itself are all deliberately absent: the first
+        is live state and the others are re-supplied by the stream at connect.
+        """
+        channels = self._channels()
+        order = [channel.orig.name for channel in channels]
+        state: dict[str, Any] = {
+            "slot": self.objectName(),
+            "identity": list(self._identity.as_tuple()),
+            "channel_order": order,
+            "hidden": [c.orig.name for c in channels if not c.visible],
+            "renames": {c.orig.name: c.name for c in channels if c.name != c.orig.name},
+            "types": {
+                c.orig.name: c.ch_type for c in channels if c.ch_type != c.orig.ch_type
+            },
+            "units": {
+                c.orig.name: c.unit_mul
+                for c in channels
+                if c.unit_mul != c.orig.unit_mul
+            },
+            "bads": [c.orig.name for c in channels if c.bad],
+            "controller": {
+                "visible": self.controller_visible,
+                "width": self.controller_width,
+            },
+            "display": dict(self.trace.controls.state),
+        }
+        if order == self.model.acquisition_names():
+            del state["channel_order"]  # omit what equals the default
+        return state
+
+    def apply_state(self, state: Mapping[str, Any]) -> None:
+        """Apply a saved presentation state; an unusable value is logged and skipped.
+
+        Parameters
+        ----------
+        state : dict
+            A mapping shaped like the one :meth:`capture_state` returns. Unknown keys
+            are ignored, as is any value this document cannot use.
+
+        Notes
+        -----
+        Best-effort per key, and it raises for no input at all. This reads a file the
+        user can edit by hand, and the all-or-nothing guarantee of a configuration load
+        is about streams and documents, not about individual settings: a restore which
+        raised part-way would leave a document holding a mix of the saved and the
+        default state, with a traceback in the log and a dialog naming no setting.
+
+        Every write goes through the :class:`~mne_lsl.viewer.controller.ChannelModel`
+        and never onto the stream. The model captures its acquisition baseline from
+        whatever the stream declares when it is built, so applying the saved edits to
+        the stream first would make the *edited* values that baseline -- which makes
+        Reset a no-op for every restored edit and, far worse, makes the next
+        :meth:`capture_state` produce **empty** deltas, i.e. destroy the configuration
+        by the act of saving it. Driving the shipped mutators also reuses their checks
+        instead of restating them.
+
+        The order is fixed. Types precede units because the set of valid units follows
+        the channel type, and a type change resets the multiplier. The controller width
+        precedes its visibility so that hiding the panel cannot swallow the width. The
+        display block is applied last, through the control bar, which validates every
+        leaf itself and reaches the display along the same path a user click takes.
+        """
+        if not isinstance(state, Mapping):
+            logger.warning(
+                "Ignoring a saved document state which is not a mapping: %r.", state
+            )
+            return
+        self._apply_types(state.get("types"))
+        self._apply_units(state.get("units"))
+        self._apply_renames(state.get("renames"))
+        self._apply_bads(state.get("bads"))
+        self._apply_order(state.get("channel_order"))
+        self._apply_hidden(state.get("hidden"))
+        self._apply_controller(state.get("controller"))
+        display = state.get("display")
+        if isinstance(display, Mapping):
+            self.trace.controls.set_state(display)
+        elif display is not None:
+            self._skip("display", display)
+
+    @staticmethod
+    def _skip(key: str, value: object) -> None:
+        """Log one unusable saved value and move on."""
+        logger.warning("Ignoring the saved document setting %r: %r.", key, value)
+
+    def _write(self, call, *args: object) -> None:
+        """Run one restore step, logging and skipping a value the model refuses.
+
+        Notes
+        -----
+        Deliberately broad. The mutators raise :class:`ValueError` for what they check
+        themselves, but this is a trust boundary and the write reaches MNE, which has
+        its own vocabulary of exceptions; the point of this method is that no one saved
+        value can abort the restore of the ones around it.
+        """
+        try:
+            call(*args)
+        except Exception as error:  # see the note above
+            logger.warning("Ignoring a saved document setting: %s", error)
+
+    def _entries(self, payload: object, key: str) -> list[tuple[int, Any]]:
+        """Return the ``(display row, saved value)`` pairs of a saved mapping.
+
+        Parameters
+        ----------
+        payload : dict
+            Saved mapping of acquisition name to value.
+        key : str
+            Name of the block, for the log messages.
+
+        Returns
+        -------
+        entries : list of tuple
+            One pair per channel the model still holds, in the saved iteration order.
+
+        Notes
+        -----
+        The name is resolved here and the *value* is left untouched, so that each block
+        checks the type it expects before grouping the rows by it: an unhashable value
+        from a hand-edited file would otherwise raise from inside the grouping, which is
+        the one thing this restore path may not do.
+        """
+        if payload is None:
+            return []
+        if not isinstance(payload, Mapping):
+            self._skip(key, payload)
+            return []
+        rows = self._rows_by_name()
+        entries: list[tuple[int, Any]] = []
+        for name, value in payload.items():
+            row = rows.get(name) if isinstance(name, str) else None
+            if row is None:
+                # A channel set may legally have grown, and a stream may have been
+                # re-provisioned under the same identity: one log line, and the rest of
+                # the block still applies.
+                self._skip(f"{key}[{name!r}]", value)
+                continue
+            entries.append((row, value))
+        return entries
+
+    def _picked(self, payload: object, key: str) -> list[int] | None:
+        """Return the current display rows of a saved list of acquisition names.
+
+        Parameters
+        ----------
+        payload : list of str
+            Saved acquisition names.
+        key : str
+            Name of the block, for the log messages.
+
+        Returns
+        -------
+        rows : list of int | None
+            The rows, in the saved order, or ``None`` when the block is absent or is not
+            a list.
+        """
+        if payload is None:
+            return None
+        if not isinstance(payload, (list, tuple)):
+            self._skip(key, payload)
+            return None
+        rows = self._rows_by_name()
+        picked = []
+        for name in payload:
+            row = rows.get(name) if isinstance(name, str) else None
+            if row is None:
+                self._skip(f"{key} channel", name)
+                continue
+            picked.append(row)
+        return picked
+
+    def _apply_types(self, payload: object) -> None:
+        """Restore the saved channel types, one bulk write per type."""
+        grouped: dict[str, list[int]] = {}
+        for row, value in self._entries(payload, "types"):
+            if not isinstance(value, str):
+                self._skip("types", value)
+                continue
+            grouped.setdefault(value, []).append(row)
+        for value, rows in grouped.items():
+            self._write(self.model.set_type, rows, value)
+
+    def _apply_units(self, payload: object) -> None:
+        """Restore the saved unit multipliers, one bulk write per human label.
+
+        Notes
+        -----
+        The saved value is the integer multiplier, which is what a channel actually
+        carries, while the model writes a human label. The translation reads the kind
+        the channel holds *now*, i.e. after the saved types were applied, and a label
+        the channel's kind does not offer is refused here rather than by the mutator, so
+        that the log line names the block. Two channels sharing a label share a kind by
+        construction, since the label spells the unit out.
+        """
+        labelled: dict[str, list[int]] = {}
+        for row, mul in self._entries(payload, "units"):
+            if isinstance(mul, bool) or not isinstance(mul, int):
+                self._skip("units", mul)
+                continue
+            channel = self.model.channel(row)
+            label = unit_label(channel.unit_kind, mul)
+            if label not in unit_choices(channel.unit_kind):
+                self._skip(f"units[{channel.orig.name!r}]", mul)
+                continue
+            labelled.setdefault(label, []).append(row)
+        for label, rows in labelled.items():
+            self._write(self.model.set_unit, rows, label)
+
+    def _apply_renames(self, payload: object) -> None:
+        """Restore the saved channel names in one write, or one per channel on failure.
+
+        Notes
+        -----
+        Grouped, because renaming row by row cannot express a **permutation**: the
+        underlying operation refuses a name still held by another channel, so a saved
+        configuration which merely swaps two names loses the first write to a collision
+        that the same mapping applied at once resolves cleanly. Row by row that loss is
+        silent -- one skipped entry and one log line per collision.
+
+        The per-row loop is kept as the fallback, so a single unusable value in a
+        hand-edited file costs only its own channel instead of the whole block. That
+        makes the grouped call an optimisation of the common case and never a new
+        failure mode.
+        """
+        wanted: dict[int, str] = {}
+        for row, value in self._entries(payload, "renames"):
+            if not isinstance(value, str):
+                self._skip("renames", value)
+                continue
+            wanted[row] = value
+        if not wanted:
+            return
+        try:
+            self.model.rename_many(wanted)
+        except Exception as error:
+            logger.warning(
+                "Could not restore %i channel name(s) together (%s); applying them one "
+                "at a time.",
+                len(wanted),
+                error,
+            )
+            for row, value in wanted.items():
+                self._write(self.model.rename, row, value)
+
+    def _apply_bads(self, payload: object) -> None:
+        """Restore the saved bad list, marking the rest good.
+
+        Notes
+        -----
+        The saved list is absolute and not a delta, thus a channel the device itself
+        declares bad and the user marked good has to be marked good again -- otherwise
+        the state a document reports after a restore differs from the one it restored
+        from, which is exactly what the save/load/save round trip has to rule out. The
+        second write is skipped when there is nothing to clear, i.e. in the common case.
+        """
+        rows = self._picked(payload, "bads")
+        if rows is None:
+            return
+        self._write(self.model.set_bad, rows, True)
+        saved = set(rows)
+        stale = [
+            row
+            for row in range(self.model.rowCount())
+            if row not in saved and self.model.channel(row).bad
+        ]
+        if stale:
+            self._write(self.model.set_bad, stale, False)
+
+    def _apply_order(self, payload: object) -> None:
+        """Restore the saved presentation order.
+
+        Notes
+        -----
+        The names are translated to acquisition indices, which is the model's ordering
+        vocabulary. A saved order which no longer covers every channel is refused by the
+        model as a whole rather than partially applied: the omitted channels would drop
+        out of the row list, hence out of the display layout -- undrawable, unreachable.
+        """
+        rows = self._picked(payload, "channel_order")
+        if rows is None:
+            return
+        self._write(
+            self.model.set_order, [self.model.channel(row).acq_index for row in rows]
+        )
+
+    def _apply_hidden(self, payload: object) -> None:
+        """Restore the saved hidden channels, in one write."""
+        rows = self._picked(payload, "hidden")
+        if rows:
+            self._write(self.model.set_visible, rows, False)
+
+    def _apply_controller(self, payload: object) -> None:
+        """Restore the controller geometry, its width before its visibility."""
+        if payload is None:
+            return
+        if not isinstance(payload, Mapping):
+            self._skip("controller", payload)
+            return
+        width = payload.get("width")
+        if width is not None:
+            if isinstance(width, bool) or not isinstance(width, int) or width < 0:
+                self._skip("controller.width", width)
+            else:
+                self.set_controller_width(width)
+        visible = payload.get("visible")
+        if visible is not None:
+            if isinstance(visible, bool):
+                self.set_controller_visible(visible)
+            else:
+                self._skip("controller.visible", visible)
 
     def retint_icons(self) -> None:
         """Rebuild the toolbar icons and the indicator for the active theme."""

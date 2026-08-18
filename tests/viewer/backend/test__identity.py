@@ -47,6 +47,40 @@ def test_slots_and_hashable(descriptor: Callable[..., StreamDescriptor]) -> None
         assert len({target, target}) == 1
 
 
+def test_descriptor_uid_is_not_part_of_the_identity(
+    descriptor: Callable[..., StreamDescriptor],
+) -> None:
+    """Test that two instances of a stream share an identity and differ as descriptors.
+
+    The uid identifies the outlet *instance*, so it must stay out of 'StreamIdentity':
+    folding it in would make every reconnection of one stream a different stream and
+    break the 3-tuple identity rule the whole availability check rests on. It must still
+    take part in the descriptor's own equality, since that is the probe-cache key.
+    """
+    first = descriptor(source_id="unit-001", uid="uid-a")
+    second = descriptor(source_id="unit-001", uid="uid-b")
+    assert first.identity == second.identity
+    assert first != second
+    assert len({first, second}) == 2
+
+
+def test_descriptor_still_frozen_and_hashable(
+    descriptor: Callable[..., StreamDescriptor],
+) -> None:
+    """Test that the uid field left the descriptor frozen, slotted and hashable.
+
+    Pinned separately from 'test_frozen' and 'test_slots_and_hashable' because those two
+    read fields which predate the uid: dropping 'frozen' or 'slots' while appending a
+    field would silently stop the identity de-duplication of 'open_streams' from
+    de-duplicating at all.
+    """
+    obj = descriptor(uid="uid-a")
+    assert not hasattr(obj, "__dict__")
+    assert isinstance(hash(obj), int)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        obj.uid = "uid-b"
+
+
 def test_same_name_different_source_id(
     descriptor: Callable[..., StreamDescriptor],
 ) -> None:

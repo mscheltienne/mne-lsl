@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from mne._fiff.constants import FIFF
 from qtpy.QtWidgets import QMainWindow
 
 from mne_lsl.viewer._bootstrap import configure_docking, import_ads
@@ -735,3 +736,279 @@ def test_retint_icons(
     for index, (before, after) in enumerate(zip(light_icons, dark_icons, strict=True)):
         assert not before.isNull()
         assert before != after, index
+
+
+# -- the serializable state ------------------------------------------------------------
+_STATE_KEYS = frozenset(
+    {
+        "slot",
+        "identity",
+        "hidden",
+        "renames",
+        "types",
+        "units",
+        "bads",
+        "controller",
+        "display",
+    }
+)
+
+
+def _row_of(doc: StreamDocument, name: str) -> int:
+    """Return the display row whose channel was acquired under ``name``."""
+    model = doc.model
+    return next(
+        row for row in range(model.rowCount()) if model.channel(row).orig.name == name
+    )
+
+
+def _edit(doc: StreamDocument) -> None:
+    """Apply one edit of every kind a configuration carries to ``doc``."""
+    doc.model.set_type([_row_of(doc, "zeta")], "ecg")
+    doc.model.set_unit([_row_of(doc, "zeta")], "mV")
+    doc.model.rename(_row_of(doc, "alpha"), "Left frontal")
+    doc.model.set_bad([_row_of(doc, "mike")], True)
+    doc.model.set_visible([_row_of(doc, "bravo")], False)
+    doc.model.set_order([3, 0, 7, 1, 6, 2, 5, 4])
+    doc.set_controller_width(250)
+    doc.set_controller_visible(False)
+    bar = doc.trace.controls
+    bar.set_rows(7)
+    bar.set_window(3.0)
+    bar.set_scale(2.0)
+    bar._color_combo.setCurrentIndex(1)
+    bar._labels_switch.setChecked(False)
+    bar._events_switch.setChecked(False)
+
+
+def test_capture_state_of_a_fresh_document(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test the captured key set and that an unedited document carries only defaults.
+
+    'channel_order' has to be absent: writing it unconditionally puts a 256-name list
+    which says nothing into every configuration and breaks the omit-what-is-default rule
+    the file's inspectability rests on. The four delta containers have to be empty: a
+    diff taken against a constant rather than against the acquisition baseline turns
+    each of them into a full table instead.
+
+    The display block is read from the control bar and not from the trace display's own
+    copies -- the bar is the single source of truth, and a second one is what a whole
+    controller page was removed to avoid.
+    """
+    doc, _, _ = document()
+    doc.trace.controls.set_rows(7)
+    state = doc.capture_state()
+    assert set(state) == _STATE_KEYS
+    assert state["slot"] == doc.objectName()
+    assert state["identity"] == list(doc.identity.as_tuple())
+    assert state["hidden"] == []
+    assert state["renames"] == {}
+    assert state["types"] == {}
+    assert state["units"] == {}
+    assert state["bads"] == []
+    assert state["controller"] == {
+        "visible": True,
+        "width": doc._splitter.sizes()[0],
+    }
+    assert state["display"] == doc.trace.controls.state
+    assert state["display"]["rows"] == 7
+
+
+def test_capture_state_is_keyed_on_acquisition_names(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that every channel key is the device's name and survives a disconnection.
+
+    Keying on the edited name makes the configuration unmatchable -- the availability
+    contract lists the device's names -- and unloadable, since the restore looks the
+    device's names up. The disconnection half pins that nothing here reads the stream: a
+    document whose stream went away must still be savable, because a configuration
+    describes a *desired* workspace.
+    """
+    doc, stream, _ = document(ch_names=list(_SCRAMBLED))
+    _edit(doc)
+    state = doc.capture_state()
+    assert state["renames"] == {"alpha": "Left frontal"}
+    assert state["types"] == {"zeta": "ecg"}
+    assert state["units"] == {"zeta": -3}
+    assert state["bads"] == ["mike"]
+    assert state["hidden"] == ["bravo"]
+    # the saved order is the acquisition names in presentation order, never the edited
+    # ones: 'alpha' is renamed and still appears under its device name.
+    assert state["channel_order"] == [
+        "bravo",
+        "zeta",
+        "STI0",
+        "alpha",
+        "delta",
+        "mike",
+        "charlie",
+        "yankee",
+    ]
+    stream.disconnect()
+    assert doc.capture_state() == state
+
+
+def test_capture_state_over_a_hidden_controller(
+    app: QApplication,
+    manager: ads.CDockManager,
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a hidden controller still saves the width it had.
+
+    The document is docked and the host shown on purpose: a laid-out 'QSplitter' reports
+    a hidden child as **0** pixels wide, which is measurable only once it has a
+    real size. Reading 'sizes()[0]' unconditionally therefore writes a zero-width panel
+    into the configuration, and the restored document then shows nothing at all when the
+    user toggles the controller back on.
+    """
+    doc, _, _ = document()
+    _dock(manager, doc)
+    manager.window().show()
+    app.processEvents()
+    doc.set_controller_width(250)
+    app.processEvents()
+    # never asserted as 250: the splitter clamps the panel to its own minimum, so the
+    # number saved is whatever the layout granted rather than whatever was asked for.
+    width = doc.capture_state()["controller"]
+    assert width == {"visible": True, "width": doc._splitter.sizes()[0]}
+    assert width["width"] > 0
+    doc.set_controller_visible(False)
+    app.processEvents()
+    assert doc._splitter.sizes()[0] == 0  # what the naive read would have saved
+    assert doc.capture_state()["controller"] == {
+        "visible": False,
+        "width": width["width"],
+    }
+
+
+def test_apply_state_round_trip(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that save, restore and save again produce the same non-empty deltas.
+
+    The strongest single assertion of the configuration feature: it fails if any step of
+    'apply_state' is dropped, reordered or keyed wrongly. The delta containers are
+    asserted **non-empty** first, because an equality between two empty dictionaries
+    passes for exactly the defect this test exists to catch -- a restore which wrote the
+    edits onto the stream, re-baselined the acquisition metadata and made the next save
+    discard the whole configuration.
+
+    Two streams, not one: a second document over the *same* stream would read the
+    already edited metadata as its baseline, i.e. the failure being ruled out here.
+    """
+    first, _, _ = document(ch_names=list(_SCRAMBLED))
+    _edit(first)
+    saved = first.capture_state()
+    for key in ("renames", "types", "units", "bads", "hidden", "channel_order"):
+        assert saved[key], key
+    second, _, _ = document(ch_names=list(_SCRAMBLED))
+    second.apply_state(saved)
+    restored = second.capture_state()
+    # the slot and the identity belong to the document, not to the presentation state.
+    for state in (saved, restored):
+        del state["slot"]
+        del state["identity"]
+    assert restored == saved
+
+
+def test_apply_state_keeps_orig_as_the_device_baseline(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a restore leaves the acquisition baseline the device's own values.
+
+    Writing the saved edits onto the stream before the model exists makes the *edited*
+    values that baseline: Reset becomes a no-op for every restored edit, and the next
+    save writes empty deltas, i.e. destroys the configuration by saving it. Asserted via
+    'reset_metadata', which is the user-visible consequence.
+    """
+    doc, _, _ = document(ch_names=list(_SCRAMBLED))
+    row = _row_of(doc, "alpha")
+    doc.apply_state({"renames": {"alpha": "Left frontal"}, "types": {"alpha": "ecg"}})
+    channel = doc.model.channel(row)
+    assert (channel.name, channel.ch_type) == ("Left frontal", "ecg")
+    assert (channel.orig.name, channel.orig.ch_type) == ("alpha", "eeg")
+    assert doc.model.reset_metadata([row]) == []
+    channel = doc.model.channel(row)
+    assert (channel.name, channel.ch_type) == ("alpha", "eeg")
+
+
+def test_apply_state_types_before_units(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a saved type and multiplier on one channel both land.
+
+    A unit-less channel acquires a physical unit through its *type*, so applying the
+    units first offers the multiplier to a channel whose kind has no unit ladder at all:
+    it is refused, the type write then resets the multiplier to zero, and the saved unit
+    is lost with nothing on screen to explain it.
+    """
+    doc, _, _ = document(
+        n_channels=3,
+        n_stim=0,
+        ch_names=["A", "B", "C"],
+        ch_types=["misc", "eeg", "eeg"],
+        ch_units=["none", "uv", "uv"],
+    )
+    row = _row_of(doc, "A")
+    assert doc.model.channel(row).orig.unit_kind == int(FIFF.FIFF_UNIT_NONE)
+    doc.apply_state({"types": {"A": "eeg"}, "units": {"A": -3}})
+    channel = doc.model.channel(row)
+    assert channel.ch_type == "eeg"
+    assert channel.unit_mul == -3
+    assert channel.unit == "mV"
+
+
+def test_apply_state_is_best_effort_per_key(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that a hand-edited state applies what it can and raises for nothing.
+
+    The file is user-editable and a restore runs after every stream of the configuration
+    is already connected: a raise here aborts a load with nothing left to fail at. An
+    unknown channel name is the legitimate half of the same property -- a channel set
+    may have grown, or the stream may have been re-provisioned -- and one bad name must
+    not cost the document every other edit.
+
+    The payload itself is checked too: 'presentation["streams"]' is opaque to the
+    persistence layer, thus a hand-edited file can put a list where a block belongs and
+    the load path reaches this with no check of its own. One of the values is a *list*,
+    which is unhashable: grouping the rows by it before checking its type would raise
+    'TypeError' from inside the grouping, and this method may not raise at all.
+    """
+    doc, _, _ = document(ch_names=list(_SCRAMBLED))
+    caplog.set_level(logging.WARNING, logger="mne_lsl")
+    display = dict(doc.trace.controls.state)
+    order = doc.model.presentation_order()
+    before = doc.capture_state()
+    doc.apply_state(["not", "a", "mapping"])
+    assert doc.capture_state() == before
+    assert "not a mapping" in caplog.text
+    doc.apply_state(
+        {
+            "types": {"zeta": "ecg", "absent": "eeg", "alpha": 5, "mike": ["eeg"]},
+            "units": {"zeta": -3, "alpha": "mV", "bravo": True},
+            "renames": {"mike": "Kept", "delta": None},
+            "bads": "mike",
+            "channel_order": "reversed",
+            "hidden": 3,
+            "controller": {"width": -50, "visible": "yes"},
+            "display": {
+                "rows": "many",
+                "window": None,
+                "labels": 3,
+                "color_mode": "no",
+            },
+        }
+    )
+    zeta = doc.model.channel(_row_of(doc, "zeta"))
+    assert (zeta.ch_type, zeta.unit_mul) == ("ecg", -3)  # the usable values landed
+    assert doc.model.channel(_row_of(doc, "mike")).name == "Kept"
+    assert doc.model.presentation_order() == order
+    assert doc.model.hidden_channels() == []
+    assert doc.capture_state()["bads"] == []
+    assert doc.controller_visible
+    assert doc.trace.controls.state == display
+    assert "absent" in caplog.text

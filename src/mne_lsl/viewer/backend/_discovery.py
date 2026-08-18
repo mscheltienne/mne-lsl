@@ -20,12 +20,14 @@ leaves :mod:`~mne_lsl.viewer.backend._source`.
 
 from __future__ import annotations
 
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QCoreApplication, QObject, QThread, Signal
 
 from ...utils.logs import logger
-from ._source import connect_stream, resolve_descriptors
+from ._source import connect_stream, probe_channels, resolve_descriptors
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -51,6 +53,27 @@ _STOP_TIMEOUT_MS = 10000
 # reports 'finished', and an owner which was itself dropped mid-pass leaves its entry
 # behind: a deliberately leaked thread, which is always preferable to an abort.
 _RUNNING: dict[QThread, QObject] = {}
+
+# Channel probes run in parallel: one is ~0.5 s of hardcoded sleep inside
+# 'StreamInlet.open_stream', thus they scale near-linearly, and four covers the handful
+# of distinct streams a set of configurations names. Not a tuning knob.
+_PROBE_WORKERS = 4
+
+# The one upstream notice a channel probe deliberately accepts, matched on the start of
+# its message. A stream publishing duplicate, blank or no channel names makes the reader
+# fall back to channel IDs and warn about it -- and that fallback is exactly what a
+# *connection* to the same stream in the same process reports, which is what makes the
+# two name lists comparable at all. A consumer running with warnings as errors would
+# otherwise get an unreachable stream for both degenerate descriptions, i.e. precisely
+# the outcome the match-on-interpreted-names rule exists to prevent.
+#
+# Narrowed to this one message on purpose, and never widened to the 'Channel names are
+# not unique' notice which the reader itself catches: suppressing that one would make
+# the probe report MNE's de-duplicated names while a connection in the same process
+# still fell back to channel IDs, and the two lists would then disagree for a stream
+# which was perfectly matchable. A probe reproduces a connection, it does not improve
+# on it.
+_PROBE_NOTICE = "Something went wrong while reading the channel description"
 
 
 def _ensure_running(thread: QThread, worker: QObject) -> None:
@@ -487,5 +510,216 @@ class Connector(QObject):
             "Could not connect to the stream %s: %s",
             descriptor.identity.as_tuple(),
             message,
+        )
+        self.failed.emit(descriptor, message)
+
+
+class _ProbeWorker(QObject):
+    """Read the channel names of a batch of streams, on a pool of worker threads.
+
+    Attributes
+    ----------
+    resolved : Signal
+        Emitted with ``(generation, descriptor, list[str])`` per probed stream.
+    failed : Signal
+        Emitted with ``(generation, descriptor, message)`` per probe which raised.
+    """
+
+    resolved = Signal(int, object, object)
+    failed = Signal(int, object, str)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Initialize the worker."""
+        super().__init__(parent)
+        # Written by the GUI thread, read by this thread before every emission: see
+        # '_ConnectorWorker.__init__' for why a plain 'int' is enough.
+        self.generation = 0
+
+    def run(self, generation: int, descriptors: object) -> None:
+        """Probe every descriptor in parallel, reporting each outcome as it lands.
+
+        Parameters
+        ----------
+        generation : int
+            Generation this batch was issued with.
+        descriptors : sequence of StreamDescriptor
+            Descriptors of the streams to probe.
+
+        Notes
+        -----
+        Nothing but plain data crosses out: the stream info a probe creates is created,
+        read and destroyed inside one call on a pool thread, and what comes back is a
+        ``list`` of names. The pool threads emit these signals themselves, which is safe
+        precisely because of that -- the connection to the owner is cross-thread and
+        therefore queued.
+
+        Cancellation is stale-work rejection, never interruption. The generation is
+        re-read before every emission and a superseded batch cancels the futures which
+        have not started, which is all :meth:`~concurrent.futures.Future.cancel` can do.
+        The ``with`` block then joins, so a superseded pass still waits out the probes
+        already in flight: a blocking liblsl call cannot be interrupted, thus a watchdog
+        would be theatre.
+
+        The warning suppression covers exactly the upstream notice of
+        :data:`_PROBE_NOTICE` and lives *here* rather than inside the probe itself.
+        :func:`warnings.catch_warnings` saves and restores the **global** filter list
+        with no thread isolation, so entering and leaving it on four pool threads at
+        once would leak the ignore filter permanently and silently disable
+        warnings-as-errors for :class:`RuntimeWarning` for the rest of the process. One
+        ``catch_warnings`` on this single worker thread, joined by the ``with`` before
+        the next batch is picked up, is the only placement with no race **among the pool
+        threads**.
+
+        It does not remove the race against other threads, and cannot: whichever of two
+        overlapping blocks leaves last restores the list it captured, so a
+        ``catch_warnings`` entered elsewhere while a batch is in flight can resurrect a
+        filter that thread had removed, or drop one it had installed. Nothing in the
+        viewer enters one on the GUI thread today. The alternatives are worse -- a
+        permanent filter installed at import is a module-level side effect, which this
+        package does not allow, and it would silence the notice for an embedder's own
+        calls -- so the real fix belongs upstream, in the reader which warns even when
+        its de-duplication produced usable names.
+
+        The suppression covers only the outer notice. The inner duplicate-name warning
+        still reaches the reader, which catches it itself and falls back to channel
+        identifiers -- the same list a connection reports, which is the agreement the
+        availability check depends on.
+        """
+        if self.generation != generation:
+            return  # superseded before this batch was started
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message=_PROBE_NOTICE, category=RuntimeWarning
+            )
+            with ThreadPoolExecutor(max_workers=_PROBE_WORKERS) as pool:
+                futures = {
+                    pool.submit(probe_channels, descriptor): descriptor
+                    for descriptor in descriptors
+                }
+                for future in as_completed(futures):
+                    if self.generation != generation:
+                        for pending in futures:
+                            pending.cancel()
+                        return
+                    descriptor = futures[future]
+                    try:
+                        names = future.result()
+                    except Exception as error:
+                        # As in the two other workers: an exception escaping a worker
+                        # slot is invisible beyond a log line, and here it would leave
+                        # every sibling of this batch unreported as well.
+                        self.failed.emit(generation, descriptor, str(error))
+                        continue
+                    self.resolved.emit(generation, descriptor, names)
+
+
+class Prober(QObject):
+    """Read the channel names of streams in the background, in parallel.
+
+    Discovery reports the channel *count* but not the names, which need an inlet. This
+    is the transport of that second round trip, kept separate from :class:`Discovery` so
+    that the interface can show the check as it happens: folding the two into one worker
+    call would make 'checking availability' a state no user ever sees.
+
+    Attributes
+    ----------
+    resolved : Signal
+        Emitted with ``(descriptor, list[str])`` for every stream which was probed. The
+        submitted descriptor comes back, not its identity, because the caller keys its
+        cache on the descriptor's ``uid`` as well.
+    failed : Signal
+        Emitted with ``(descriptor, message)`` when a probe raised.
+
+    Notes
+    -----
+    A generation counter of its own, mirrored onto the worker exactly as
+    :class:`Discovery`'s and :class:`Connector`'s are. Deliberately **not** shared with
+    the discovery counter: the two passes are independent, and a shared counter would
+    let a refresh which superseded a discovery invalidate an unrelated probe batch.
+
+    This object knows nothing about configurations: it does not de-duplicate -- the
+    caller submits distinct descriptors -- and it does not cache, because the cache is
+    keyed on ``(identity, uid)`` and read by the interface before a batch is submitted.
+    """
+
+    resolved = Signal(object, object)
+    failed = Signal(object, str)
+    _request = Signal(int, object)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Initialize the prober object."""
+        super().__init__(parent)
+        self._generation = 0
+        self._thread = QThread()  # parentless, see 'Discovery.__init__' and '_RUNNING'
+        self._thread.setObjectName("mne-lsl-viewer-prober")
+        self._worker = _ProbeWorker()  # parentless too, see 'Discovery.__init__'
+        self._worker.moveToThread(self._thread)
+        self._request.connect(self._worker.run)
+        self._worker.resolved.connect(self._on_resolved)
+        self._worker.failed.connect(self._on_failed)
+        self._thread.finished.connect(self._on_thread_finished)
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.stop)
+
+    def probe(self, descriptors: Sequence[StreamDescriptor]) -> None:
+        """Read the channel names of every stream of ``descriptors``, in the background.
+
+        Parameters
+        ----------
+        descriptors : sequence of StreamDescriptor
+            Descriptors of the streams to probe. An empty sequence still starts a batch,
+            which reports nothing.
+        """
+        self._generation += 1
+        self._worker.generation = self._generation  # visible to the worker's loop
+        _ensure_running(self._thread, self._worker)
+        # copied to a tuple, as in 'Connector.open': a caller mutating its own sequence
+        # afterwards cannot change the work which was already submitted.
+        self._request.emit(self._generation, tuple(descriptors))
+
+    def stop(self) -> None:
+        """Cancel the pending probes and wait for the worker; idempotent."""
+        self._generation += 1
+        self._worker.generation = self._generation
+        _stop_thread(self._thread, "prober")
+
+    def _on_thread_finished(self) -> None:
+        """Release the worker thread from ``_RUNNING``; see 'Discovery'."""
+        if not self._thread.isRunning():
+            _RUNNING.pop(self._thread, None)
+
+    def _on_resolved(self, generation: int, descriptor: object, names: object) -> None:
+        """Publish the channel names of a probe which belongs to the current batch.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the batch was issued with.
+        descriptor : StreamDescriptor
+            Descriptor of the stream which was probed.
+        names : list of str
+            The channel names, in acquisition order.
+        """
+        if generation != self._generation:
+            return  # stale batch: nothing was acquired, thus nothing to release either
+        self.resolved.emit(descriptor, names)
+
+    def _on_failed(self, generation: int, descriptor: object, message: str) -> None:
+        """Report a probe which failed during the current batch.
+
+        Parameters
+        ----------
+        generation : int
+            Generation the batch was issued with.
+        descriptor : StreamDescriptor
+            Descriptor of the stream which could not be probed.
+        message : str
+            Text of the exception which was raised, shown by the interface.
+        """
+        if generation != self._generation:
+            return
+        logger.debug(
+            "Could not probe the stream %s: %s", descriptor.identity.as_tuple(), message
         )
         self.failed.emit(descriptor, message)

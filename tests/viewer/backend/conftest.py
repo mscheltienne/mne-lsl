@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -10,18 +9,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from mne_lsl.stream import BaseStream
-
-
-@pytest.fixture
-def config_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    """Point 'Path.home()' at a temporary directory and return it.
-
-    The configuration directory is computed from 'Path.home()' on every call precisely
-    so that it can be redirected here, instead of being frozen into a module constant at
-    import time.
-    """
-    monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    return tmp_path
 
 
 @pytest.fixture

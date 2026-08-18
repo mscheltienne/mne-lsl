@@ -55,9 +55,18 @@ class StreamDescriptor:
         Host on which the outlet runs.
     dtype : str | DTypeLike
         Channel format of the stream.
+    uid : str
+        Identifier of the *outlet instance*, not of the stream: re-instantiating an
+        outlet under the same identity yields a different ``uid``. A channel set cached
+        against ``(identity, uid)`` is therefore still valid, while a changed ``uid``
+        proves nothing about the channels and forces a fresh probe.
 
     Notes
     -----
+    ``uid`` is deliberately not part of :class:`StreamIdentity`: an identity is the
+    ``(name, stype, source_id)`` triple, and folding the instance identifier into it
+    would make every reconnection of the same stream a different stream.
+
     Frozen, and built exclusively of plain Python and numpy scalar types, because a
     descriptor is what crosses the worker/GUI thread boundary in place of the
     :class:`~mne_lsl.lsl.StreamInfo` it was read from: that object's ``__del__``
@@ -72,3 +81,4 @@ class StreamDescriptor:
     sfreq: float
     hostname: str
     dtype: str | DTypeLike
+    uid: str

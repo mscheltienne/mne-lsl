@@ -34,7 +34,6 @@ style = [
 test = [
   'pylabrecorder>=0.3.0',
   'pytest-cov',
-  'pytest-qt',
   'pytest-randomly',
   'pytest-rerunfailures>=10.2',  # '--rerun-except'
   'pytest-timeout',
@@ -42,6 +41,12 @@ test = [
   'pytest>=8.0',
   'pyxdf',
 ]
+# 'pytest-qt' is an entry-point plugin: pytest imports it before any conftest runs and
+# it aborts collection outright when no Qt binding is installed, which no
+# 'collect_ignore_glob' can prevent. It therefore ships with the viewer extras rather
+# than in 'test', so a job installing neither binding can still run the rest of the
+# suite.
+test-viewer = ['pytest-qt']
 
 [project]
 authors = [

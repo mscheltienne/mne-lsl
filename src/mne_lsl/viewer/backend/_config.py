@@ -12,10 +12,13 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ...utils._checks import check_type
 from ...utils.logs import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 # Bumped whenever the serialized layout changes; a configuration carrying an unknown
 # version is reported as 'invalid' rather than migrated silently.
@@ -52,6 +55,11 @@ _WINDOWS_RESERVED = frozenset(
 # Bound on the slug collision walk. A user with 999 configurations sharing a slug has a
 # different problem; the bound exists so a bug cannot spin forever.
 _MAX_COLLISIONS = 1000
+
+# Names carried by an unavailability reason before the list is cut short. The count
+# carries the magnitude, the names carry the identification: a 256-channel mismatch must
+# not render a 4 kB label under a card title.
+_REASON_NAMES = 3
 
 
 def config_dir() -> Path:
@@ -148,6 +156,274 @@ class ViewerConfig:
     invalid_reason: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ConfigurationState:
+    """Rendered availability of one configuration, i.e. what one card shows.
+
+    Parameters
+    ----------
+    name : str
+        Name of the configuration, as its card is titled.
+    state : str
+        One of the ``STATE_*`` constants of this module.
+    reason : str
+        One-line explanation shown under the title, ``''`` when the state needs none.
+    n_streams : int
+        Number of streams the configuration requires, ``0`` unless it is available: it
+        is the 'N streams' line of an available card and nothing else.
+
+    Notes
+    -----
+    Everything the launcher needs and nothing more: no path, no
+    :class:`ViewerConfig`, no identity. That is what keeps the card region a passive
+    renderer of values the window computed.
+    """
+
+    name: str
+    state: str
+    reason: str
+    n_streams: int
+
+
+def identity_text(identity: tuple[str, str, str]) -> str:
+    """Return the user-visible rendering of ``identity``, e.g. ``'A (eeg/s1)'``.
+
+    Parameters
+    ----------
+    identity : tuple of str
+        Exact identity tuple ``(name, stype, source_id)``.
+
+    Returns
+    -------
+    text : str
+        The three fields on one line.
+
+    Notes
+    -----
+    Spelled once because the same rendering appears in three unavailability reasons and
+    in the load-failure dialog, and because the type and the source ID are what keep two
+    same-name streams distinguishable: dropping them would render a name collision
+    identically twice.
+    """
+    name, stype, source_id = identity
+    return f"{name} ({stype}/{source_id})"
+
+
+def _capped(items: list[str]) -> str:
+    """Return ``items`` joined, cut to :data:`_REASON_NAMES` entries.
+
+    Parameters
+    ----------
+    items : list of str
+        The already-rendered entries, in the order they are shown.
+
+    Returns
+    -------
+    text : str
+        The entries joined by a comma, followed by an ellipsis when some were cut.
+    """
+    if len(items) <= _REASON_NAMES:
+        return ", ".join(items)
+    return ", ".join(items[:_REASON_NAMES]) + ", …"
+
+
+def _missing_reason(missing: list[tuple[str, str, str]], total: int) -> str:
+    """Return the reason of a configuration whose identities are not all present.
+
+    Parameters
+    ----------
+    missing : list of tuple of str
+        The identities absent from the last discovery pass.
+    total : int
+        Number of identities the configuration requires, for the ``'2 of 3'`` form.
+
+    Returns
+    -------
+    reason : str
+        The one-line reason.
+    """
+    text = _capped([identity_text(identity) for identity in missing])
+    if len(missing) == 1:
+        return f"No matching stream: {text}."
+    return (
+        f"No matching stream: {len(missing)} of {total} required streams are "
+        f"missing — {text}."
+    )
+
+
+def _unreachable_reason(identity: tuple[str, str, str], message: str) -> str:
+    """Return the reason of a stream which is present but could not be probed.
+
+    Parameters
+    ----------
+    identity : tuple of str
+        Identity of the stream which could not be reached.
+    message : str
+        Text of the exception the probe raised.
+
+    Returns
+    -------
+    reason : str
+        The one-line reason.
+    """
+    return f"Could not reach {identity_text(identity)}: {message}"
+
+
+def missing_channels(expected: Iterable[str], present: Iterable[str]) -> list[str]:
+    """Return the ``expected`` names which ``present`` lacks, in saved order.
+
+    Parameters
+    ----------
+    expected : iterable of str
+        Channel names the configuration was saved with.
+    present : iterable of str
+        Channel names the stream reports now, probed or connected.
+
+    Returns
+    -------
+    missing : list of str
+        The absent names, in the order they were saved.
+
+    Notes
+    -----
+    Shared by the availability check and by the load path, which read their inputs from
+    different places -- a probed description before connecting, the measurement info
+    afterwards -- but must answer the identical question. Two spellings of one
+    comparison is the shape that produces this feature's worst failure: a card reading
+    available and a load that then refuses, or the reverse.
+
+    ``present`` is materialised once. Rebuilding the set per name is quadratic, which at
+    a few hundred channels across a few dozen configurations turns one republish into
+    hundreds of milliseconds of work on the thread that paints.
+    """
+    have = set(present)
+    return [name for name in expected if name not in have]
+
+
+def channels_reason(identity: tuple[str, str, str], missing: list[str]) -> str:
+    """Return the reason of a stream which no longer provides its saved channels.
+
+    Parameters
+    ----------
+    identity : tuple of str
+        Identity of the stream whose channel set shrank.
+    missing : list of str
+        Names the configuration expects and the stream no longer publishes.
+
+    Returns
+    -------
+    reason : str
+        The one-line reason, carrying the count and at most :data:`_REASON_NAMES` names.
+
+    Notes
+    -----
+    Public, unlike the two reason builders next to it, because the same sentence is the
+    one the load path shows when the *connected* metadata no longer covers the saved
+    channel set: two spellings of one sentence would let the card and the dialog
+    describe the same situation differently.
+    """
+    return (
+        f"{identity_text(identity)} no longer provides {len(missing)} of its saved "
+        f"channels ({_capped(missing)})."
+    )
+
+
+def evaluate_state(
+    cfg: ViewerConfig,
+    present: frozenset[tuple[str, str, str]] | None,
+    probed: Mapping[tuple[str, str, str], list[str] | str],
+) -> ConfigurationState:
+    """Return the availability of ``cfg`` against a discovery pass and its probes.
+
+    Parameters
+    ----------
+    cfg : ViewerConfig
+        One configuration, as :func:`list_configurations` returned it.
+    present : frozenset of tuple of str | None
+        The identities the last discovery pass found, or ``None`` when no pass has
+        completed yet.
+    probed : dict
+        Per identity, either the probed channel names or the message of the exception
+        the probe raised. An identity absent from the mapping has a probe in flight or
+        not submitted yet.
+
+    Returns
+    -------
+    state : ConfigurationState
+        The rendered card state.
+
+    Notes
+    -----
+    Pure: no I/O, no Qt, no mutation of either argument -- an in-place ``pop`` or
+    ``sort`` here would corrupt the caller's probe cache. It also does not know
+    :data:`STATE_LOADING`, which is imposed by the caller on the one configuration it is
+    opening, and it does not sort or group: presentation order belongs to the launcher.
+
+    The evaluation order is load-bearing. An unreadable envelope is terminal for the
+    session and is therefore reported *before* the identity check, because such a
+    configuration has an empty ``streams`` list and would otherwise be reported as
+    missing every stream -- telling the user to plug a device in to repair a corrupt
+    file. ``present is None`` gets a reason of its own rather than a state of its own:
+    before the first pass, 'no matching stream' is simply a false statement.
+
+    A channel set matches when the saved names are a **subset** of the probed ones, by
+    name: extras are tolerated and neither the order, the count, the types nor the
+    sampling rate are compared. A channel type is viewer-editable, so gating on it would
+    make a configuration unavailable *because* the user had edited a type; and the
+    degenerate descriptions are what make subset-by-name right, since a stream
+    publishing no names reduces the check to 'the channel count did not shrink', which
+    is the best answer available for one.
+
+    A failure which is already final wins over a sibling whose probe has not landed:
+    reporting the precise reason as soon as it is known is the whole point of probing
+    eagerly, and no pending check can change the verdict.
+    """
+    if cfg.invalid_reason is not None:
+        return ConfigurationState(cfg.name, STATE_INVALID, cfg.invalid_reason, 0)
+    if present is None:
+        return ConfigurationState(
+            cfg.name, STATE_UNAVAILABLE_NO_MATCH, "Waiting for discovery…", 0
+        )
+    missing = [identity for identity in cfg.streams if identity not in present]
+    if missing:
+        return ConfigurationState(
+            cfg.name,
+            STATE_UNAVAILABLE_NO_MATCH,
+            _missing_reason(missing, len(cfg.streams)),
+            0,
+        )
+    checking = False
+    for identity in cfg.streams:
+        expected = cfg.channels.get(channel_key(identity))
+        if expected is None:
+            continue  # an event source: matched on its identity and never probed
+        if identity not in probed:
+            checking = True
+            continue
+        result = probed[identity]
+        if isinstance(result, str):
+            # the probe's own message, never a name sequence: 'set' over a string
+            # compares *characters* and would report a channel mismatch for a stream
+            # which could not be reached at all.
+            return ConfigurationState(
+                cfg.name,
+                STATE_UNAVAILABLE_NO_MATCH,
+                _unreachable_reason(identity, result),
+                0,
+            )
+        absent = missing_channels(expected, result)
+        if absent:
+            return ConfigurationState(
+                cfg.name,
+                STATE_UNAVAILABLE_CHANNELS,
+                channels_reason(identity, absent),
+                0,
+            )
+    if checking:
+        return ConfigurationState(cfg.name, STATE_CHECKING, "Checking availability…", 0)
+    return ConfigurationState(cfg.name, STATE_AVAILABLE, "", len(cfg.streams))
+
+
 def _slug(name: str) -> str:
     """Return the file stem of a configuration named ``name``.
 
@@ -227,8 +503,23 @@ def _parse_streams(data: dict[str, Any]) -> list[tuple[str, str, str]] | None:
     Returns
     -------
     streams : list of tuple of str | None
-        The identity tuples, or ``None`` if the field is absent, is not a non-empty
-        list, or holds an entry which is not 3 non-empty strings.
+        The identity tuples, de-duplicated in saved order, or ``None`` if the field is
+        absent, is not a non-empty list, or holds an entry which is not 3 strings of
+        which the first is non-empty.
+
+    Notes
+    -----
+    Only the name is required to be non-empty. A source identifier is **optional** in
+    the protocol and real devices do omit it, and such a stream is discovered, probed
+    and connected perfectly well -- so refusing it here would make the viewer write a
+    file its own reader destroys at the next launch, which is exactly the disagreement
+    the writer's non-empty check exists to prevent.
+
+    Duplicates are dropped rather than rejected. A repeated identity would otherwise be
+    counted twice on the card, opened twice by the connector, and built into two
+    documents sharing one stream -- two channel models writing one measurement info,
+    each taking the other's edits as its baseline, so the next save records the wrong
+    deltas.
     """
     streams = data.get("streams")
     if not isinstance(streams, list) or len(streams) == 0:
@@ -237,10 +528,10 @@ def _parse_streams(data: dict[str, Any]) -> list[tuple[str, str, str]] | None:
     for entry in streams:
         if not isinstance(entry, (list, tuple)) or len(entry) != 3:
             return None
-        if not all(isinstance(item, str) and item for item in entry):
+        if not all(isinstance(item, str) for item in entry) or not entry[0]:
             return None
         identities.append(tuple(entry))
-    return identities
+    return list(dict.fromkeys(identities))
 
 
 def _parse_channels(data: dict[str, Any], path: Path) -> dict[str, list[str]] | None:
@@ -541,6 +832,82 @@ def save_configuration(cfg: ViewerConfig) -> Path:
     _atomic_write(path, _to_dict(cfg))
     logger.debug("Saved the configuration '%s' to %s.", cfg.name, path)
     return path
+
+
+def rename_configuration(name: str, new_name: str) -> Path:
+    """Rename the configuration named ``name`` to ``new_name``.
+
+    Parameters
+    ----------
+    name : str
+        Current name of the configuration.
+    new_name : str
+        New name, stripped of its surrounding whitespace.
+
+    Returns
+    -------
+    fname : Path
+        Path of the file holding the renamed configuration.
+
+    Raises
+    ------
+    TypeError
+        If either name is not a :class:`str`.
+    ValueError
+        If ``new_name`` is blank, if no configuration is named ``name``, if ``new_name``
+        is already taken by a *different* configuration, or if the file could not be
+        read -- a corrupt configuration has no payload to carry over and is cleared with
+        :func:`delete_configuration` instead.
+
+    Notes
+    -----
+    Deliberately not routed through :func:`save_configuration`, which looks the name up
+    and would find the *old* file: it would overwrite that one and leave the rename a
+    silent no-op. Only the ``name`` field is rewritten -- the presentation payload and
+    the channel sets are carried over untouched.
+
+    The new file is written **before** the old one is unlinked, so an interruption
+    between the two leaves a duplicate rather than nothing, and a failing unlink is
+    logged and swallowed for the same reason: the payload is already safe by then.
+    Renaming to a name which differs only by case rewrites in place, because
+    :func:`_slug` casefolds and the target path would otherwise collide with the source
+    and walk to a numbered variant, leaving two files for one configuration.
+    """
+    check_type(name, (str,), "name")
+    check_type(new_name, (str,), "new_name")
+    new_name = new_name.strip()
+    if not new_name:
+        raise ValueError("The name of a configuration cannot be empty.")
+    path = _find(name)
+    if path is None:
+        raise ValueError(f"There is no saved configuration named '{name}'.")
+    taken = _find(new_name)
+    if taken is not None and taken != path:
+        raise ValueError(f"A configuration named '{new_name}' already exists.")
+    data = _read(path)
+    if data is None:
+        raise ValueError(
+            f"The configuration '{name}' could not be read and cannot be renamed; "
+            "delete it instead."
+        )
+    data["name"] = new_name
+    if taken == path:
+        _atomic_write(path, data)
+        return path
+    target = _new_path(new_name)
+    _atomic_write(target, data)
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as error:  # see the note above: a duplicate beats a loss
+        logger.warning(
+            "Renamed the configuration '%s' to '%s' but could not remove %s: %s.",
+            name,
+            new_name,
+            path,
+            error,
+        )
+    logger.debug("Renamed the configuration '%s' to '%s'.", name, new_name)
+    return target
 
 
 def delete_configuration(name: str) -> None:

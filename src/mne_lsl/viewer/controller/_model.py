@@ -36,7 +36,7 @@ from mne._fiff.meas_info import _unit2human
 from qtpy.QtCore import QAbstractListModel, QModelIndex, Qt, Signal
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping, Sequence
 
     from qtpy.QtCore import QObject
 
@@ -769,6 +769,62 @@ class ChannelModel(QAbstractListModel):
             self._read_stream()
         self._emit_metadata(row, row)
 
+    def rename_many(self, names: Mapping[int, str]) -> None:
+        """Rename several channels at once, in one write.
+
+        Parameters
+        ----------
+        names : dict of int to str
+            New name per display row. A row already carrying its requested name is
+            dropped, and an empty result is a no-op.
+
+        Raises
+        ------
+        ValueError
+            If a row is not a display row, if a name is blank or unprintable, or if the
+            names the request would leave behind are not unique.
+
+        Notes
+        -----
+        Renaming one channel at a time cannot express a **permutation**. The underlying
+        operation refuses a target that is still held, so ``{'A': 'B', 'B': 'A'}``
+        applied row by row fails on its first write, while the same mapping in one call
+        succeeds -- the library resolves the whole set at once. A restore therefore has
+        to group, or a saved configuration which merely reorders names loses the writes
+        that collide, silently and one at a time.
+
+        Uniqueness is checked against the names the request *leaves*, not against the
+        names in use now, which is what allows a swap while still refusing a collision
+        with a channel nobody is renaming. Everything else matches the single-channel
+        path: names are stripped, blank and unprintable are refused,
+        ``allow_duplicates`` is never used, and ``info['bads']`` follows a rename by
+        itself.
+        """
+        rows = _sorted_rows(names, len(self._rows))
+        if not rows or not self._stream.connected:
+            return
+        mapping: dict[str, str] = {}
+        for row in rows:
+            channel = self.channel(row)
+            value = names[row].strip()
+            if not value or not value.isprintable():
+                raise ValueError(
+                    f"A channel name must be non-empty and printable, got {value!r}."
+                )
+            if value != channel.name:
+                mapping[channel.name] = value
+        if not mapping:
+            return
+        current = list(self._stream.info["ch_names"])
+        final = [mapping.get(name, name) for name in current]
+        if len(set(final)) != len(final):
+            raise ValueError("The requested channel names are not unique.")
+        try:
+            self._stream.rename_channels(mapping)
+        finally:
+            self._read_stream()
+        self._emit_metadata(rows[0], rows[-1])
+
     def reset_metadata(self, rows: Iterable[int]) -> list[str]:
         """Restore the name, type, unit and bad state of ``rows`` to stream values.
 
@@ -929,6 +985,66 @@ class ChannelModel(QAbstractListModel):
                 f"got {kind!r}."
             )
         self._apply_order(rows)
+
+    def set_order(self, acq_indices: Sequence[int]) -> None:
+        """Reorder the channels into an explicit acquisition-index order.
+
+        Parameters
+        ----------
+        acq_indices : sequence of int
+            The acquisition indices of every channel, in the display order they must
+            take. Over an empty model, ``[]`` is the only permutation and is a no-op.
+
+        Raises
+        ------
+        ValueError
+            If ``acq_indices`` is not a permutation of the model's own acquisition
+            indices, i.e. if it repeats one, omits one, or names one the model does not
+            hold.
+
+        Notes
+        -----
+        The counterpart of :meth:`presentation_order`, and the entry point of a restored
+        configuration. A partial order is refused rather than tolerated: applying one
+        would leave the omitted channels out of the row list altogether, hence out of
+        :meth:`visible_acq_indices` -- undrawable *and* unreachable from the Channels
+        page, with nothing on screen to explain the loss.
+
+        Acquisition indices and never names, symmetrically with
+        :meth:`presentation_order`: the model's ordering vocabulary is the acquisition
+        index, and translating a saved name back to one belongs to whoever holds the
+        saved names.
+        """
+        by_index = {channel.acq_index: channel for channel in self._rows}
+        wanted = [int(index) for index in acq_indices]
+        if sorted(wanted) != sorted(by_index):
+            raise ValueError(
+                f"The display order must be a permutation of the {len(by_index)} "
+                f"acquisition indices of the model, got {wanted}."
+            )
+        self._apply_order([by_index[index] for index in wanted])
+
+    def acquisition_names(self) -> list[str]:
+        """Return the names the stream declared, in acquisition order.
+
+        Returns
+        -------
+        names : list of str
+            ``Channel.orig.name`` of every channel, ordered by acquisition index.
+
+        Notes
+        -----
+        The availability contract of a saved configuration and the key set of every
+        channel-keyed block it carries, thus spelled once, here, where the acquisition
+        baseline lives. The *original* names and never the edited ones: a contract
+        holding a renamed channel could match no stream, and the acquisition order and
+        never the presentation one: a contract which reshuffled between two saves of one
+        workspace would compare unequal to itself.
+        """
+        return [
+            channel.orig.name
+            for channel in sorted(self._rows, key=lambda c: c.acq_index)
+        ]
 
     def _apply_order(self, rows: list[Channel]) -> None:
         """Replace the row order, remapping the persistent indexes.

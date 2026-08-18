@@ -9,6 +9,7 @@ from mne._fiff.constants import FIFF, _ch_unit_mul_named
 from qtpy.QtCore import QItemSelectionModel, Qt
 
 import mne_lsl.viewer.controller
+from mne_lsl.stream import StreamLSL
 from mne_lsl.viewer.controller import (
     CH_TYPES,
     UNIT_LABELS,
@@ -36,7 +37,6 @@ if TYPE_CHECKING:
 
     from qtpy.QtWidgets import QApplication
 
-    from mne_lsl.stream import StreamLSL
     from tests.viewer.controller.conftest import Emissions
 
 _V = int(FIFF.FIFF_UNIT_V)
@@ -368,6 +368,101 @@ def test_order_by_does_not_renumber_the_acquisition_index(model: ChannelModel) -
         assert after == before, kind
     # the colour is a function of that index alone, thus pinning the index pins the pen
     assert trace_color(before["Fp1"], "dark") == trace_color(0, "dark")
+
+
+# -- an explicit order, i.e. a restored one --------------------------------------------
+def test_set_order_applies_a_permutation(
+    model: ChannelModel, emissions: Callable[[ChannelModel], Emissions]
+) -> None:
+    """Test that an explicit order is applied verbatim, announced once, and remapped.
+
+    Four properties over one reorder, because they are one behaviour and one stream: the
+    requested order is what the model holds, the display's own layout follows it, the
+    move is announced with a single layout notification and no metadata one, and a
+    persistent index follows its channel rather than its row number.
+
+    A 'set_order' which sorted, ignored its argument or forwarded to
+    'order_by("acquisition")' would silently discard the order of every configuration
+    loaded. A dropped emission would leave the display drawing the previous order for
+    the rest of the session. A bypassed remap would leave the highlight on the row
+    numbers, so the inspector would edit a channel other than the one shown as selected.
+    """
+    wanted = [3, 0, 7, 1, 6, 2, 5, 4]
+    selection = QItemSelectionModel(model)
+    for row in (0, 5, 6):
+        selection.select(model.index(row, 0), QItemSelectionModel.SelectionFlag.Select)
+    expected = {model.channel(row).acq_index for row in (0, 5, 6)}
+    log = emissions(model)
+    model.set_order(wanted)
+    assert model.presentation_order() == wanted
+    assert model.visible_acq_indices() == wanted
+    assert (log.layout, log.metadata) == (1, 0)
+    assert log.layout_qt == 1
+    selected = {
+        model.channel(index.row()).acq_index for index in selection.selectedIndexes()
+    }
+    assert selected == expected
+    # a hidden channel drops out of the display layout but keeps its place in the order.
+    model.set_visible([2], False)
+    assert model.presentation_order() == wanted
+    assert model.visible_acq_indices() == [3, 0, 1, 6, 2, 5, 4]
+
+
+def test_set_order_rejects_anything_but_a_permutation(model: ChannelModel) -> None:
+    """Test that a non-permutation raises and leaves the order untouched.
+
+    Tolerating a partial or duplicated order would drop the omitted channels out of the
+    row list, hence out of 'visible_acq_indices' -- undrawable and unreachable from the
+    page, with nothing on screen to explain the loss. An unknown index has to be refused
+    here as well, or it raises 'KeyError' from inside whichever Qt slot ran the restore.
+
+    The four cases share one test rather than a parametrization on purpose: the model
+    fixture is function-scoped, so a parametrization would pay one stream connection per
+    case, and every case leaves the model unchanged by construction.
+    """
+    before = model.presentation_order()
+    orders = (
+        [3, 0, 7, 1, 6, 2, 5],  # partial
+        [3, 3, 0, 7, 1, 6, 2, 5],  # a duplicate, hence one channel omitted
+        [3, 0, 7, 1, 6, 2, 5, 99],  # an index the model does not hold
+        [],  # empty over a non-empty model
+    )
+    for order in orders:
+        with pytest.raises(ValueError, match="must be a permutation"):
+            model.set_order(order)
+        assert model.presentation_order() == before, order
+
+
+def test_set_order_over_a_disconnected_model() -> None:
+    """Test that an empty model accepts the empty order and refuses anything else.
+
+    A model built over a stream which is not connected holds no row, and the empty list
+    is the only permutation of nothing: refusing it would make the check divide by the
+    row count or index its first element. No connection is made here at all.
+    """
+    empty = ChannelModel(StreamLSL(2.0, name="absent", stype="eeg", source_id="absent"))
+    empty.set_order([])
+    assert empty.presentation_order() == []
+    assert empty.acquisition_names() == []
+    with pytest.raises(ValueError, match="must be a permutation"):
+        empty.set_order([0])
+
+
+def test_acquisition_names_is_acquisition_order_and_original(
+    model: ChannelModel,
+) -> None:
+    """Test that the contract holds the device's names, in acquisition order.
+
+    Reading 'Channel.name' instead of 'Channel.orig.name' puts the *edited* names into
+    the availability contract, so the configuration would match no stream and be
+    permanently unavailable; reading the presentation order would make the contract
+    reshuffle between two saves of one unchanged workspace.
+    """
+    declared = model.acquisition_names()
+    assert declared == [model.channel(row).name for row in range(model.rowCount())]
+    model.rename(0, "Renamed")
+    model.set_order([3, 0, 7, 1, 6, 2, 5, 4])
+    assert model.acquisition_names() == declared
 
 
 # -- visibility ------------------------------------------------------------------------
@@ -824,6 +919,46 @@ def test_rename_writes_the_stream(
     assert model.channel(0).name == "Renamed"
     assert log.data == [(0, 0)]
     assert (log.layout, log.metadata) == (0, 1)
+
+
+def test_rename_many_swaps_two_names(
+    model: ChannelModel,
+    mixed_stream: StreamLSL,
+    emissions: Callable[[ChannelModel], Emissions],
+) -> None:
+    """Test that a permutation of names is applied, which one write per row cannot do.
+
+    The underlying operation refuses a target still held by another channel, so renaming
+    row by row fails on the first half of a swap. This is what makes a grouped write
+    necessary rather than merely faster: restoring a saved configuration that only
+    exchanges two names would otherwise lose the first one, silently.
+
+    Fails if ``rename_many`` reverts to calling the single-channel path in a loop, and
+    fails if it stops emitting once for the span.
+    """
+    first, second = model.channel(0).name, model.channel(1).name
+    log = emissions(model)
+    model.rename_many({0: second, 1: first})
+    assert mixed_stream.info.ch_names[:2] == [second, first]
+    assert (model.channel(0).name, model.channel(1).name) == (second, first)
+    assert log.data == [(0, 1)]
+    assert (log.layout, log.metadata) == (0, 1)
+
+
+def test_rename_many_rejects_a_collision_with_an_untouched_channel(
+    model: ChannelModel, mixed_stream: StreamLSL
+) -> None:
+    """Test that a grouped rename still refuses to duplicate a name it does not touch.
+
+    Uniqueness is checked against the names the request *leaves*, which is what allows a
+    swap while still refusing a genuine collision. Fails if the check is dropped, or if
+    it is written against the names in use now, which would also refuse the swap above.
+    """
+    third = model.channel(2).name
+    before = list(mixed_stream.info.ch_names)
+    with pytest.raises(ValueError, match="not unique"):
+        model.rename_many({0: third})
+    assert mixed_stream.info.ch_names == before
 
 
 def test_rename_rejects_blank_and_unprintable(

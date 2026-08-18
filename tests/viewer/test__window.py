@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
-from qtpy.QtWidgets import QMessageBox
+from qtpy.QtCore import QRect
+from qtpy.QtGui import QGuiApplication
+from qtpy.QtWidgets import QInputDialog, QMessageBox
 
 from mne_lsl.stream import StreamLSL
 from mne_lsl.viewer import _window
@@ -11,10 +14,21 @@ from mne_lsl.viewer._bootstrap import import_ads
 from mne_lsl.viewer._document import StreamDocument
 from mne_lsl.viewer._launcher import PROGRESS_TEXT
 from mne_lsl.viewer.backend import (
+    STATE_AVAILABLE,
+    STATE_CHECKING,
+    STATE_INVALID,
+    STATE_LOADING,
+    STATE_UNAVAILABLE_NO_MATCH,
     Connector,
     Discovery,
+    Prober,
     StreamDescriptor,
     StreamIdentity,
+    ViewerConfig,
+    channel_key,
+    connect_stream,
+    list_configurations,
+    save_configuration,
 )
 from mne_lsl.viewer.display import WINDOW_RANGE
 from mne_lsl.viewer.theme import _ADS_ICONS, _MODES
@@ -23,6 +37,7 @@ ads = import_ads()
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from pytestqt.qtbot import QtBot
     from qtpy.QtWidgets import QApplication
@@ -32,7 +47,7 @@ if TYPE_CHECKING:
 
 
 def _descriptor_for(
-    stream: StreamLSL, *, source_id: str | None = None
+    stream: StreamLSL, *, source_id: str | None = None, uid: str | None = None
 ) -> StreamDescriptor:
     """Return a descriptor for a stream the fixture created.
 
@@ -49,6 +64,7 @@ def _descriptor_for(
         sfreq=stream.info["sfreq"],
         hostname="localhost",
         dtype="float32",
+        uid=str(uuid.uuid4()) if uid is None else uid,
     )
 
 
@@ -63,6 +79,21 @@ def _open(
     descriptor = _descriptor_for(stream, source_id=source_id)
     window._on_connected(descriptor, stream)
     return window.documents[-1]
+
+
+def _borrow(
+    window: ViewerWindow, stream: StreamLSL, *, source_id: str | None = None
+) -> StreamDocument:
+    """Open one document over a *borrowed* stream, so closing it leaves it connected.
+
+    The 'BaseStream.plot()' ownership, reached with an explicit source ID so that one
+    connection can carry several identities. Used where a test has to close a workspace
+    and then hand the very same stream to a configuration load.
+    """
+    identity = _descriptor_for(stream, source_id=source_id).identity
+    doc = StreamDocument(window._manager, stream, identity, owns_stream=False)
+    window._register(doc)
+    return doc
 
 
 def _spy_open(
@@ -749,14 +780,19 @@ def test_close_event_closes_documents(
 def test_close_event_stops_the_workers(
     window: ViewerWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Test that both workers are stopped by the window closing.
+    """Test that all four workers are stopped by the window closing.
 
     The 'aboutToQuit' fallback each worker owner installs needs a running event loop,
     i.e. it never fires on the path which merely shows the window, thus this is the only
     teardown there.
+
+    Four and not two: the load-only connector and the prober are the two which are easy
+    to forget, because each starts its thread lazily and only a configuration gesture
+    ever does. A 'QThread' destroyed while it runs makes Qt abort the process, and only
+    sometimes, so a missing stop lands as CI flake rather than as a failure here.
     """
     stopped: list[str] = []
-    for cls in (Discovery, Connector):
+    for cls in (Discovery, Connector, Prober):
         original = cls.stop
 
         def _stop(self, _original=original, _name=cls.__name__) -> None:
@@ -767,9 +803,15 @@ def test_close_event_stops_the_workers(
     window.refresh()
     assert window._discovery._thread.isRunning()
     window.close()
-    assert stopped == ["Discovery", "Connector"]
-    assert not window._discovery._thread.isRunning()
-    assert not window._connector._thread.isRunning()
+    # two 'Connector' entries: the incremental one and the load-only one.
+    assert stopped == ["Discovery", "Connector", "Connector", "Prober"]
+    for owner in (
+        window._discovery,
+        window._connector,
+        window._loader,
+        window._prober,
+    ):
+        assert not owner._thread.isRunning()
 
 
 def test_refresh_after_a_close_starts_no_worker(window: ViewerWindow) -> None:
@@ -784,3 +826,1095 @@ def test_refresh_after_a_close_starts_no_worker(window: ViewerWindow) -> None:
     assert window.closed
     window.refresh()
     assert not window._discovery._thread.isRunning()
+
+
+# -- saved configurations: helpers -----------------------------------------------------
+def _write_config(
+    name: str,
+    streams: list[tuple[str, str, str]],
+    channels: dict[tuple[str, str, str], list[str]] | None = None,
+    presentation: dict | None = None,
+) -> None:
+    """Write one configuration straight through the persistence layer."""
+    save_configuration(
+        ViewerConfig(
+            name=name,
+            streams=list(streams),
+            channels={
+                channel_key(identity): list(names)
+                for identity, names in (channels or {}).items()
+            },
+            presentation=presentation or {},
+        )
+    )
+
+
+def _spy_probe(monkeypatch: pytest.MonkeyPatch) -> list[tuple[StreamDescriptor, ...]]:
+    """Record every 'Prober.probe' call instead of probing anything."""
+    calls: list[tuple[StreamDescriptor, ...]] = []
+    monkeypatch.setattr(
+        Prober, "probe", lambda self, descriptors: calls.append(tuple(descriptors))
+    )
+    return calls
+
+
+def _stub_text(
+    monkeypatch: pytest.MonkeyPatch, value: str, *, accepted: bool = True
+) -> list[str]:
+    """Answer every name prompt with ``value``; return the prompt titles seen.
+
+    The static helper is patched, which is what the shipped code calls: no dialog is
+    ever constructed and no nested event loop is entered, so a prompt this suite forgot
+    to stub fails as a missing call rather than hanging with no timeout.
+    """
+    seen: list[str] = []
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        staticmethod(
+            lambda parent, title, *args, **kwargs: (
+                seen.append(title),
+                (value, accepted),
+            )[1]
+        ),
+    )
+    return seen
+
+
+def _stub_box(monkeypatch: pytest.MonkeyPatch, kind: str, answer: object) -> list[str]:
+    """Answer every message box of ``kind`` with ``answer``; return the texts seen.
+
+    Stubs the window's own dialog helper rather than the static ``QMessageBox`` methods,
+    because the helper is what the window calls -- it exists to render a name literally
+    instead of interpreting it as markup.
+
+    A dialog of an *unstubbed* kind raises instead of opening. That is the point: a real
+    modal in a test blocks forever, and ``pytest-timeout``'s signal method cannot
+    interrupt one, so the run dies at the session timeout with no useful report.
+    Stacking two calls for different kinds works -- each chains to the one before it.
+    """
+    seen: list[str] = []
+    previous = _window._message
+    chained = getattr(previous, "_is_stub", False)
+
+    def fake(parent, box_kind: str, title: str, text: str, detail: str = "") -> bool:
+        if box_kind == kind:
+            # Summary and detail joined for recording only. The dialog shows the summary
+            # and folds the exception behind its details control, so both reach the user
+            # and a test asserting on either keeps working.
+            seen.append(f"{text}\n\n{detail}" if detail else text)
+            return answer == QMessageBox.StandardButton.Yes
+        if chained:
+            return previous(parent, box_kind, title, text, detail)
+        raise AssertionError(f"an unstubbed {box_kind} dialog was shown: {text!r}")
+
+    fake._is_stub = True
+    monkeypatch.setattr(_window, "_message", fake)
+    return seen
+
+
+def _card(window: ViewerWindow, name: str):
+    """Return the configuration card named ``name``."""
+    return window._landing._cards[name]
+
+
+def _drive_load(
+    window: ViewerWindow,
+    name: str,
+    connected: list[tuple[StreamDescriptor, object]],
+    failed: list[tuple[StreamDescriptor, str]] = (),
+) -> None:
+    """Open a configuration with its connections already made.
+
+    'Connector.open' must be spied by the caller: this hands the streams to the load
+    path through the very slot the connector's signal reaches, which is what lets every
+    load outcome be exercised for the price of the connections the test already has.
+    """
+    window.open_configuration(name)
+    for descriptor, message in failed:
+        window._on_load_failed(descriptor, message)
+    for descriptor, stream in connected:
+        window._on_load_connected(descriptor, stream)
+
+
+class _DummyStream:
+    """Stand-in for a connected stream, recording its own release."""
+
+    def __init__(self) -> None:
+        self.connected = True
+        self.disconnected = 0
+
+    def disconnect(self) -> None:
+        """Record one release."""
+        self.disconnected += 1
+        self.connected = False
+
+
+# -- availability: no stream, no network -----------------------------------------------
+def test_cards_start_waiting_for_discovery(
+    config_home: Path, window: ViewerWindow, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a card before the first discovery pass says it is waiting for one.
+
+    'No matching stream' is a claim the viewer cannot make before a pass has landed, and
+    initialising the set of present identities to an empty frozenset instead of 'None'
+    is what makes the first paint state it anyway.
+    """
+    identity = descriptor().identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    window.reload_configurations()
+    assert window._present is None
+    card = _card(window, "mine")
+    assert card.state == STATE_UNAVAILABLE_NO_MATCH
+    assert card._reason.text() == "Waiting for discovery…"
+
+
+def test_identity_match_submits_exactly_the_matching_probes(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that only the identities which are both required and present are probed.
+
+    Three streams take part: one required and on the network, one required and absent,
+    one present and required by nothing. A submit list built from the configurations
+    instead of from the intersection fires a probe at the absent identity, which burns
+    the full resolution timeout once per Refresh for a card already reading 'no matching
+    stream'; a list built from the pass alone probes every stream on the network for
+    nothing.
+    """
+    matching = descriptor(name="required-and-present")
+    absent = descriptor(name="required-and-absent")
+    bystander = descriptor(name="present-and-unwanted")
+    _write_config(
+        "mine",
+        [matching.identity.as_tuple()],
+        {matching.identity.as_tuple(): ["Fp1"]},
+    )
+    _write_config(
+        "other", [absent.identity.as_tuple()], {absent.identity.as_tuple(): ["Cz"]}
+    )
+    calls = _spy_probe(monkeypatch)
+    window.reload_configurations()
+    assert calls == []  # nothing is probed before a pass has landed
+    window._on_streams_found([matching, bystander])
+    assert calls == [(matching,)]
+    assert _card(window, "mine").state == STATE_CHECKING
+    assert _card(window, "mine")._reason.text() == "Checking availability…"
+    assert _card(window, "other").state == STATE_UNAVAILABLE_NO_MATCH
+
+
+def test_no_identity_match_submits_no_probe(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a pass matching no configuration submits no probe batch at all.
+
+    Dropping the guard submits an empty batch, i.e. one round trip through the worker
+    per Refresh for nothing -- and a first launch with twenty saved configurations would
+    pay a probe per configuration before this guard existed.
+    """
+    absent = descriptor(name="absent")
+    _write_config(
+        "mine", [absent.identity.as_tuple()], {absent.identity.as_tuple(): ["Cz"]}
+    )
+    calls = _spy_probe(monkeypatch)
+    window.reload_configurations()
+    window._on_streams_found([descriptor(name="unrelated")])
+    assert calls == []
+
+
+def test_probe_result_fans_out_to_every_configuration(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that one probe result settles every configuration naming that stream.
+
+    Storing the result per configuration rather than per stream means N configurations
+    cost N probes of the same stream, i.e. N inlets opened against one acquisition
+    device.
+    """
+    shared = descriptor(name="shared")
+    identity = shared.identity.as_tuple()
+    _write_config("first", [identity], {identity: ["Fp1"]})
+    _write_config("second", [identity], {identity: ["Fp1", "Fp2"]})
+    calls = _spy_probe(monkeypatch)
+    window.reload_configurations()
+    window._on_streams_found([shared])
+    assert calls == [(shared,)]
+    window._on_probed(shared, ["Fp1", "Fp2", "Cz"])
+    assert _card(window, "first").state == STATE_AVAILABLE
+    assert _card(window, "second").state == STATE_AVAILABLE
+    assert _card(window, "first")._reason.text() == "1 stream"
+
+
+def test_probe_result_is_cached_by_uid(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a second pass re-probes only when the outlet instance changed.
+
+    Dropping the uid from the cache key makes a re-provisioned stream keep its stale
+    channel set for the rest of the session; skipping the cache re-probes every stream
+    on every Refresh, which opens and destroys an inlet against a live device per click.
+    """
+    first = descriptor(name="device", source_id="unit-1", uid="uid-a")
+    identity = first.identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    calls = _spy_probe(monkeypatch)
+    window.reload_configurations()
+    window._on_streams_found([first])
+    window._on_probed(first, ["Fp1"])
+    assert _card(window, "mine").state == STATE_AVAILABLE
+    window._on_streams_found([first])  # the same outlet instance: nothing to re-probe
+    assert calls == [(first,)]
+    assert _card(window, "mine").state == STATE_AVAILABLE
+    # re-instantiated under the same identity: the channel set may have changed.
+    again = descriptor(name="device", source_id="unit-1", uid="uid-b")
+    window._on_streams_found([again])
+    assert calls == [(first,), (again,)]
+    assert _card(window, "mine").state == STATE_CHECKING
+
+
+def test_probe_failure_names_the_stream(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a probe which raised reads as unreachable and carries its message.
+
+    Storing the failure as an empty name list makes the card blame the channels of a
+    stream the viewer never reached, i.e. the wrong one of the two reasons the whole
+    eager probe exists to separate.
+    """
+    stream = descriptor(name="device", stype="eeg", source_id="unit-1")
+    identity = stream.identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    _spy_probe(monkeypatch)
+    window.reload_configurations()
+    window._on_streams_found([stream])
+    window._on_probe_failed(stream, "the inlet did not open")
+    card = _card(window, "mine")
+    assert card.state == STATE_UNAVAILABLE_NO_MATCH
+    assert card._reason.text() == (
+        "Could not reach device (eeg/unit-1): the inlet did not open"
+    )
+
+
+def test_refresh_does_not_reset_the_cards(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that an available card stays available across a Refresh yet to land.
+
+    Resetting the cards on a Refresh flickers every available configuration to
+    unavailable and back on each click; the page-level indicator already carries that
+    progress.
+    """
+    stream = descriptor(name="device")
+    identity = stream.identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    _spy_probe(monkeypatch)
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    window.reload_configurations()
+    window._on_streams_found([stream])
+    window._on_probed(stream, ["Fp1"])
+    assert _card(window, "mine").state == STATE_AVAILABLE
+    window.refresh()
+    assert _card(window, "mine").state == STATE_AVAILABLE
+
+
+def test_refresh_relists_the_configuration_directory(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a Refresh picks up a configuration which appeared or vanished.
+
+    This is the replacement for a filesystem watcher and for the re-list a manage dialog
+    would have done: listing only at construction leaves a deleted configuration on
+    screen until the window is reopened, and a file written by a second window
+    invisible.
+    """
+    identity = descriptor().identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    window.refresh()
+    assert window._landing.configuration_names() == ("mine",)
+    _write_config("later", [identity], {identity: ["Fp1"]})
+    window.refresh()
+    assert window._landing.configuration_names() == ("later", "mine")
+    for path in config_home.rglob("mine*.json"):
+        path.unlink()
+    window.refresh()
+    assert window._landing.configuration_names() == ("later",)
+
+
+# -- saving ----------------------------------------------------------------------------
+def test_save_as_writes_the_whole_workspace(
+    app: QApplication,
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the envelope, the layout, the window block and the action enablement.
+
+    One workspace and one connection covers all four, because they are one gesture. Two
+    documents over **one** stream: a second document needs a second identity, not a
+    second connection, and a connection is 1.68 s of liblsl handshake.
+
+    What each half kills. The envelope: an order which disagrees between 'streams' and
+    the presentation blocks, or a 'channels' mapping keyed by name, makes the
+    availability check compare the wrong channel set. The layout: a regressed
+    compression flag turns the value into a blob 'json.dumps' refuses, and a missing
+    layout version writes 'UserVersion="0"' which refuses every layout the next release
+    saves. The window block: reading 'geometry()' while maximized stores a full-screen
+    'normal' size, so the restored window cannot be un-maximized to anything sensible.
+    The actions: 'save_configuration' reaches a writer which refuses an empty stream
+    list, i.e. raises inside a Qt slot.
+    """
+    assert not window._act_save.isEnabled()
+    assert not window._act_save_as.isEnabled()
+    first = _open(window, stream, source_id="unit-1")
+    second = _open(window, stream, source_id="unit-2")
+    assert window._act_save.isEnabled()
+    assert window._act_save_as.isEnabled()
+    window.showMaximized()
+    app.processEvents()
+    assert window.isMaximized()
+    assert window.geometry() != window.normalGeometry()
+    normal = window.normalGeometry()
+    _stub_text(monkeypatch, "my workspace")
+    window.save_configuration_as()
+
+    (cfg,) = list_configurations()
+    assert cfg.name == "my workspace"
+    assert cfg.streams == [first.identity.as_tuple(), second.identity.as_tuple()]
+    assert cfg.channels == {
+        channel_key(doc.identity.as_tuple()): list(stream.ch_names)
+        for doc in (first, second)
+    }
+    blocks = cfg.presentation["streams"]
+    assert [tuple(block["identity"]) for block in blocks] == cfg.streams
+    assert [block["slot"] for block in blocks] == [
+        first.objectName(),
+        second.objectName(),
+    ]
+    layout = cfg.presentation["layout"]
+    assert layout.startswith("<?xml")
+    assert f'UserVersion="{_window.LAYOUT_VERSION}"' in layout
+    for doc in (first, second):
+        assert doc.objectName() in layout
+    assert cfg.presentation["window"] == {
+        "x": normal.x(),
+        "y": normal.y(),
+        "width": normal.width(),
+        "height": normal.height(),
+        "maximized": True,
+    }
+    assert window._source == "my workspace"
+    window.close_all_documents()
+    assert not window._act_save.isEnabled()
+    assert not window._act_save_as.isEnabled()
+
+
+def test_save_overwrites_the_source_without_prompting(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a plain Save replaces the configuration this workspace came from.
+
+    A '_source' which is never set makes every Save prompt, so the user accumulates a
+    file per save; one which is not cleared when the file disappears makes Save write
+    silently to a name no card shows.
+    """
+    _open(window, stream)
+    prompts = _stub_text(monkeypatch, "mine")
+    window.save_configuration_as()
+    assert len(prompts) == 1
+    (path,) = list(config_home.rglob("*.json"))
+    window.save_configuration()
+    assert len(prompts) == 1  # no second prompt: the name is already the user's
+    assert list(config_home.rglob("*.json")) == [path]
+    # the configuration disappeared behind the workspace's back.
+    path.unlink()
+    window.save_configuration()
+    assert len(prompts) == 2  # it falls through to Save as
+
+
+def test_save_as_prompt_policy(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the cancel, the blank name, the 120-character cap and the Replace question.
+
+    Four policies of one prompt over one connection. A dropped cancel check saves a
+    configuration the user backed out of; a dropped blank check writes a card with no
+    title which can be neither identified nor renamed; a dropped cap carries 300
+    characters into every card label and every unavailability reason; and a dropped
+    Replace question makes Save as silently overwrite a configuration the user did not
+    name.
+    """
+    _open(window, stream)
+    _stub_text(monkeypatch, "cancelled", accepted=False)
+    window.save_configuration_as()
+    assert list_configurations() == []
+
+    _stub_text(monkeypatch, "   ")
+    window.save_configuration_as()
+    assert list_configurations() == []
+
+    _stub_text(monkeypatch, "n" * 300)
+    window.save_configuration_as()
+    (cfg,) = list_configurations()
+    assert cfg.name == "n" * 120
+
+    # a colliding name, refused: one question, and the other configuration untouched.
+    _write_config("taken", [("a", "b", "c")])
+    _stub_text(monkeypatch, "taken")
+    asked = _stub_box(monkeypatch, "question", QMessageBox.StandardButton.No)
+    window.save_configuration_as()
+    assert len(asked) == 1
+    assert "taken" in asked[0]
+    by_name = {entry.name: entry for entry in list_configurations()}
+    assert by_name["taken"].streams == [("a", "b", "c")]
+
+    asked = _stub_box(monkeypatch, "question", QMessageBox.StandardButton.Yes)
+    window.save_configuration_as()
+    assert len(asked) == 1
+    by_name = {entry.name: entry for entry in list_configurations()}
+    assert by_name["taken"].streams == [window.documents[0].identity.as_tuple()]
+
+
+def test_save_reports_a_disconnected_stream(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a document whose stream went away is saved, and said to be down.
+
+    Blocking the save would let a device which will be back tomorrow lose a workspace
+    today: the identity and every setting are still known, and a configuration describes
+    a *desired* workspace. Dropping the notice instead saves silently and leaves the
+    user with no way to tell that a stream was already gone.
+    """
+    _open(window, stream)
+    stream.disconnect()
+    _stub_text(monkeypatch, "mine")
+    window.save_configuration_as()
+    (cfg,) = list_configurations()
+    assert cfg.streams
+    message = window.statusBar().currentMessage()
+    assert "Saved 'mine'." in message
+    assert "1 stream currently disconnected." in message
+
+
+# -- loading ---------------------------------------------------------------------------
+def _save_two_document_workspace(
+    window: ViewerWindow, stream: StreamLSL, monkeypatch: pytest.MonkeyPatch
+) -> tuple[str, list[tuple[StreamDescriptor, StreamLSL]]]:
+    """Save a two-document workspace and return its name and the load's connections.
+
+    Two documents over **one** stream, under two source IDs: a document needs a second
+    identity and not a second connection. The same stream object is handed back for both
+    identities, which is exactly what the connector's slot would do for two streams.
+
+    The workspace which is saved *borrows* the stream, so that closing it leaves the
+    stream connected for the load to be handed. A load always owns what it was given,
+    thus the documents it builds do disconnect on the way out.
+    """
+    first = _borrow(window, stream, source_id="unit-1")
+    second = _borrow(window, stream, source_id="unit-2")
+    _stub_text(monkeypatch, "mine")
+    window.save_configuration_as()
+    pairs = [
+        (_descriptor_for(stream, source_id=doc.identity.source_id), stream)
+        for doc in (first, second)
+    ]
+    window._descriptors = {
+        descriptor.identity.as_tuple(): descriptor for descriptor, _ in pairs
+    }
+    return "mine", pairs
+
+
+def test_load_end_to_end(
+    config_home: Path,
+    window: ViewerWindow,
+    qtbot: QtBot,
+    outlets: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test a real save, close and reopen against a real outlet on the network.
+
+    The one load which goes through the loader thread and a real connection: a missing
+    loader connection, a slot which never reserves its name, a purge which never runs or
+    a document which is never published all surface here. The **state equality** is what
+    makes it more than a smoke test -- the reopened document has to report exactly the
+    presentation state which was written, slot and identity included.
+    """
+    _spy_probe(monkeypatch)  # the channel probe is not what this test is about
+    descriptor = outlets(n_channels=3, ch_names=["Fp1", "Fp2", "Cz"])
+    live = connect_stream(descriptor, 4.0)
+    _open(window, live)
+    window.documents[0].model.rename(0, "Renamed")
+    _stub_text(monkeypatch, "mine")
+    window.save_configuration_as()
+    (cfg,) = list_configurations()
+    saved_block = cfg.presentation["streams"][0]
+    saved_layout = cfg.presentation["layout"]
+
+    window.close_all_documents()
+    assert window.documents == ()
+    assert not live.connected  # the document owned it and disconnected it
+    window.reload_configurations()
+    window._on_streams_found([descriptor])
+    window.open_configuration("mine")
+    qtbot.waitUntil(lambda: len(window.documents) == 1, timeout=25000)
+    doc = window.documents[0]
+    assert doc.identity == descriptor.identity
+    assert window._stack.currentWidget() is window._dock_host
+    assert window._source == "mine"
+    restored = doc.capture_state()
+    # The controller width is compared apart on purpose: it is whatever the splitter's
+    # own minimum-size negotiation granted in this layout, not a number the document
+    # stores, and the saved workspace was laid out in a different one. Everything else
+    # has to match exactly, and 'test_apply_state_round_trip' pins the width too, over
+    # one layout.
+    assert restored.pop("controller")["visible"] == saved_block["controller"]["visible"]
+    assert doc.controller_width > 0
+    del saved_block["controller"]
+    assert restored == saved_block
+    assert doc.model.channel(0).name == "Renamed"
+    # the slot was reused, thus the saved layout still joins and re-saves identically.
+    assert (
+        bytes(window._manager.saveState(_window.LAYOUT_VERSION)).decode("utf-8")
+        == saved_layout
+    )
+
+
+def test_load_restores_the_slots_and_reserves_them(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a load reuses the saved object names and keeps the counter past them.
+
+    A counter which is not reserved grants a name a saved layout already owns on the
+    next incremental Open, and a duplicate object name overwrites the manager's map
+    entry and makes every later 'saveState()' name that slot several times -- which
+    restores into as many phantom dock areas, survives a save/load cycle and is
+    unrecoverable from the interface.
+    """
+    _spy_open(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    slots = [doc.objectName() for doc in window.documents]
+    window.close_all_documents()
+    _drive_load(window, name, pairs)
+    assert [doc.objectName() for doc in window.documents] == slots
+    assert window._next_index > max(int(slot.split("-")[1]) for slot in slots)
+
+
+def test_load_purges_closed_documents_first(
+    config_home: Path,
+    window: ViewerWindow,
+    lsl_stream: Callable[..., tuple[StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that loading twice in one process leaves one map entry per document.
+
+    Without the purge the second load re-registers the saved slot names as duplicates,
+    which -- measured -- overwrites the map entries and makes the next 'saveState()'
+    name one slot four times. The byte-identical re-save is the exact assertion, and it
+    is only exact because the load rebuilds in the saved order.
+    """
+    _spy_open(monkeypatch)
+    first_stream, _ = lsl_stream()
+    name, pairs = _save_two_document_workspace(window, first_stream, monkeypatch)
+    saved = bytes(window._manager.saveState(_window.LAYOUT_VERSION)).decode("utf-8")
+    window.close_all_documents()
+    _drive_load(window, name, pairs)
+    assert len(window.documents) == 2
+    window.close_all_documents()
+
+    # a fresh connection: the documents of the first load owned and disconnected the one
+    # above when they were closed.
+    second_stream, _ = lsl_stream()
+    again = [(descriptor, second_stream) for descriptor, _ in pairs]
+    _drive_load(window, name, again)
+    assert len(window.documents) == 2
+    assert len(window._manager.dockWidgetsMap()) == 2
+    assert (
+        bytes(window._manager.saveState(_window.LAYOUT_VERSION)).decode("utf-8")
+        == saved
+    )
+
+
+def test_restore_layout_always_leaves_every_document_open(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that no saved layout, however broken, can lose a document.
+
+    Three ways a layout fails, all of them measured. Unparsable XML is refused and
+    closes nothing. A layout whose version was bumped is refused the same way. And an
+    XML naming only some of the registered widgets is *accepted* -- 'restoreState'
+    returns True -- while leaving the others closed, so one document disappears with no
+    error at all; an XML naming none of them closes every document and returns True over
+    an empty workspace.
+
+    The re-add loop is what catches all three, and none of them is a load failure: all
+    or nothing applies to streams and documents, never to widget placement, so the
+    outcome is one non-modal note and no dialog.
+    """
+    _spy_open(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    docs = list(window.documents)
+    good = bytes(window._manager.saveState(_window.LAYOUT_VERSION)).decode("utf-8")
+    bumped = good.replace(
+        f'UserVersion="{_window.LAYOUT_VERSION}"',
+        f'UserVersion="{_window.LAYOUT_VERSION + 1}"',
+    )
+    renamed = good.replace(docs[1].objectName(), "stream-does-not-exist")
+    for layout in ("not xml at all", bumped, renamed, "", None):
+        window.statusBar().clearMessage()
+        window._restore_layout(layout, docs)
+        for doc in docs:
+            assert not doc.isClosed(), layout
+        assert window.findChildren(QMessageBox) == []
+    # only a layout which was present and refused says so.
+    window.statusBar().clearMessage()
+    window._restore_layout("not xml at all", docs)
+    assert "shown as tabs" in window.statusBar().currentMessage()
+    window.statusBar().clearMessage()
+    window._restore_layout(None, docs)
+    assert window.statusBar().currentMessage() == ""
+
+
+def test_load_rolls_back_a_failed_connection(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that one failed connection undoes the whole load, with exactly one dialog.
+
+    A rollback which forgets the streams leaks a live inlet and its acquisition thread
+    for the life of the process, and a dialog moved into the per-stream failure slot
+    opens one modal per stream for a single click.
+    """
+    _spy_open(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    window.close_all_documents()
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    refreshed: list[int] = []
+    monkeypatch.setattr(Discovery, "refresh", lambda self: refreshed.append(1))
+    _drive_load(
+        window,
+        name,
+        connected=[pairs[0]],
+        failed=[(pairs[1][0], "0 were found: [].")],
+    )
+    assert window.documents == ()
+    assert window._stack.currentWidget() is window._landing
+    assert window._loading is None
+    assert not stream.connected  # the sibling which did connect was released
+    assert len(shown) == 1
+    assert "0 were found" in shown[0]
+    assert refreshed == [1]
+    assert window._act_refresh.isEnabled()
+
+
+def test_load_dialog_is_one_per_click_whatever_the_number_of_failures(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that two failed connections still produce exactly one dialog.
+
+    A five-stream configuration whose device is off must not open five modals for one
+    click, and the per-stream messages have to survive into the one which is shown.
+    """
+    _spy_open(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    window.close_all_documents()
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    _drive_load(
+        window,
+        name,
+        connected=[],
+        failed=[(pairs[0][0], "first is down"), (pairs[1][0], "second is down")],
+    )
+    assert len(shown) == 1
+    assert "first is down" in shown[0]
+    assert "second is down" in shown[0]
+
+
+def test_load_rolls_back_a_channel_mismatch(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a shrunk channel set is caught against the *connected* metadata.
+
+    Skipping the check opens the workspace over a stream which no longer carries what
+    the configuration described, and the Channels page then shows a different channel
+    set with nothing to explain it. The count and a name have to reach the dialog, or
+    the user cannot tell which stream to look at.
+    """
+    _spy_open(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    window.close_all_documents()
+    # the saved contract names a channel the stream does not publish.
+    (cfg,) = list_configurations()
+    key = channel_key(pairs[0][0].identity.as_tuple())
+    cfg.channels[key] = [*cfg.channels[key], "GoneAway"]
+    save_configuration(cfg)
+    window.reload_configurations()
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    _drive_load(window, name, pairs)
+    assert window.documents == ()
+    assert not stream.connected
+    assert len(shown) == 1
+    assert "no longer provides 1 of its saved channels (GoneAway)." in shown[0]
+
+
+def test_load_releases_a_late_connection(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+) -> None:
+    """Test that a connection landing after a rollback is disconnected, not adopted.
+
+    The connector transfers stream ownership with its signal, thus the 'not my attempt'
+    branch is the only thing between a cancelled load and one leaked inlet plus its
+    acquisition thread, for the life of the process. No connection is made here at all.
+    """
+    late = _DummyStream()
+    assert window._loading is None
+    window._on_load_connected(descriptor(), late)
+    assert late.disconnected == 1
+    assert window.documents == ()
+
+
+def test_load_refuses_a_vanished_identity_before_connecting(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a stream which left between the card and the click is refused up front.
+
+    The race is one event-loop turn wide, so this is defence -- and it is the difference
+    between one dialog and a 'KeyError' raised inside a Qt slot, which aborts the
+    process for an embedder. Nothing may be connected either.
+    """
+    gone = descriptor(name="gone", stype="eeg", source_id="unit-9")
+    identity = gone.identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    calls = _spy_open(monkeypatch)
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    window.reload_configurations()
+    window._on_streams_found([])  # the network reports nothing
+    window.open_configuration("mine")
+    assert calls == []
+    assert window._loading is None
+    assert len(shown) == 1
+    assert shown[0] == "gone (eeg/unit-9) is no longer on the network."
+
+
+# -- the restored window geometry ------------------------------------------------------
+def test_restore_geometry_applies_an_on_screen_rect(
+    app: QApplication, window: ViewerWindow
+) -> None:
+    """Test that a rectangle inside a real screen is applied verbatim.
+
+    A defensive loop which always falls through to the clamp makes every configuration
+    reopen centred at the same size, i.e. the saved geometry means nothing at all.
+    """
+    available = QGuiApplication.primaryScreen().availableGeometry()
+    target = QRect(available.x() + 20, available.y() + 20, 400, 300)
+    _window._restore_geometry(
+        window,
+        {
+            "x": target.x(),
+            "y": target.y(),
+            "width": target.width(),
+            "height": target.height(),
+            "maximized": False,
+        },
+    )
+    app.processEvents()
+    assert window.geometry() == target
+
+
+def test_restore_geometry_clamps_an_off_screen_rect(
+    app: QApplication, window: ViewerWindow
+) -> None:
+    """Test that a rectangle no screen can show is clamped onto the primary one.
+
+    A monitor which was unplugged restores the window somewhere it cannot be seen and,
+    worse, cannot be grabbed by its title bar to be brought back. Clamped silently: an
+    unplugged screen is not an error the user has to acknowledge.
+    """
+    available = QGuiApplication.primaryScreen().availableGeometry()
+    _window._restore_geometry(
+        window,
+        {"x": -9000, "y": -9000, "width": 400, "height": 300, "maximized": False},
+    )
+    app.processEvents()
+    assert available.intersected(window.geometry()).width() >= _window._MIN_VISIBLE_W
+    assert available.intersected(window.geometry()).height() >= _window._MIN_VISIBLE_H
+    assert window.width() <= available.width()
+    assert window.height() <= available.height()
+
+
+def test_restore_geometry_restores_the_maximized_state(
+    app: QApplication, window: ViewerWindow
+) -> None:
+    """Test that a workspace saved maximized comes back maximized."""
+    available = QGuiApplication.primaryScreen().availableGeometry()
+    _window._restore_geometry(
+        window,
+        {
+            "x": available.x() + 10,
+            "y": available.y() + 10,
+            "width": 400,
+            "height": 300,
+            "maximized": True,
+        },
+    )
+    app.processEvents()
+    assert window.isMaximized()
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        "not a mapping",
+        {"x": 0, "y": 0, "width": 400},  # a missing field
+        {"x": 0, "y": 0, "width": "400", "height": 300},  # a string
+        {
+            "x": 0,
+            "y": 0,
+            "width": True,
+            "height": 300,
+        },  # a bool passes 'isinstance(int)'
+        {"x": 0, "y": 0, "width": 0, "height": 300},  # a degenerate size
+        {"x": 0, "y": 0, "width": -400, "height": 300},
+    ],
+)
+def test_restore_geometry_skips_an_unusable_state(
+    app: QApplication, window: ViewerWindow, state: object
+) -> None:
+    """Test that a hand-edited window block is skipped whole rather than half-applied.
+
+    Half a rectangle is worse than none, and this is a file the user can edit: applying
+    what parses would move the window without resizing it, or resize it to nothing. No
+    connection is made in any of these cases.
+    """
+    before = window.geometry()
+    _window._restore_geometry(window, state)
+    app.processEvents()
+    assert window.geometry() == before
+
+
+# -- renaming and deleting -------------------------------------------------------------
+def test_delete_asks_before_removing(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a delete is confirmed once, and that refusing it keeps the file.
+
+    There is no undo, so an unconfirmed delete destroys a workspace on a misclick; and
+    the card must disappear on the confirmed one, or the interface keeps offering a file
+    which is gone.
+    """
+    identity = descriptor().identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    window.reload_configurations()
+    refused = _stub_box(monkeypatch, "question", QMessageBox.StandardButton.No)
+    window._delete_configuration("mine")
+    assert len(refused) == 1
+    assert "mine" in refused[0]
+    assert [cfg.name for cfg in list_configurations()] == ["mine"]
+    _stub_box(monkeypatch, "question", QMessageBox.StandardButton.Yes)
+    window._delete_configuration("mine")
+    assert list_configurations() == []
+    assert window._landing.configuration_names() == ()
+
+
+def test_rename_follows_the_source_and_reports_a_collision(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that the workspace's source name follows a rename, and that a clash warns.
+
+    A source which does not follow makes the next plain Save write a *third* file under
+    the old name; a collision reported as anything but a warning would fall through to a
+    write which overwrites the configuration the user did not name.
+    """
+    identity = descriptor().identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    _write_config("other", [identity], {identity: ["Fp1"]})
+    monkeypatch.setattr(Discovery, "refresh", lambda self: None)
+    window.reload_configurations()
+    window._source = "mine"
+
+    _stub_text(monkeypatch, "renamed")
+    window._rename_configuration("mine")
+    assert window._source == "renamed"
+    assert sorted(cfg.name for cfg in list_configurations()) == ["other", "renamed"]
+    assert window._landing.configuration_names() == ("other", "renamed")
+
+    warned = _stub_box(monkeypatch, "warning", QMessageBox.StandardButton.Ok)
+    _stub_text(monkeypatch, "other")
+    window._rename_configuration("renamed")
+    assert len(warned) == 1
+    assert "already exists" in warned[0]
+    assert window._source == "renamed"
+    assert sorted(cfg.name for cfg in list_configurations()) == ["other", "renamed"]
+
+
+def test_rename_cancelled_changes_nothing(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that dismissing the rename prompt writes nothing.
+
+    A missing check on the prompt's own return value renames to whatever text the field
+    happened to hold when the user pressed Cancel.
+    """
+    identity = descriptor().identity.as_tuple()
+    _write_config("mine", [identity], {identity: ["Fp1"]})
+    _stub_text(monkeypatch, "renamed", accepted=False)
+    window._rename_configuration("mine")
+    assert [cfg.name for cfg in list_configurations()] == ["mine"]
+
+
+def test_loading_takes_over_its_own_card_only(
+    config_home: Path,
+    window: ViewerWindow,
+    stream: StreamLSL,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that the card being opened reads 'Opening' and every sibling goes inert.
+
+    Dropping the substitution leaves the loading card available and clickable, which is
+    what lets a second click start a second load attempt -- and the second one strands
+    the streams the first has already connected. The state is imposed by the window and
+    not by the availability check, which knows nothing about a load being in flight.
+    """
+    _spy_open(monkeypatch)
+    _spy_probe(monkeypatch)
+    name, pairs = _save_two_document_workspace(window, stream, monkeypatch)
+    window.close_all_documents()
+    other = pairs[0][0]
+    _write_config(
+        "sibling", [other.identity.as_tuple()], {other.identity.as_tuple(): ["ch0"]}
+    )
+    window.reload_configurations()
+    window._on_streams_found([descriptor for descriptor, _ in pairs])
+    window._on_probed(other, list(stream.ch_names))
+    assert _card(window, "sibling").state == STATE_AVAILABLE
+
+    window.open_configuration(name)
+    assert _card(window, name).state == STATE_LOADING
+    assert _card(window, name)._reason.text() == "Connecting…"
+    assert not _card(window, name).activatable
+    assert not _card(window, "sibling").activatable
+    assert not window._act_refresh.isEnabled()
+    # finish the load, so the fixture tears a settled window down.
+    for descriptor, live in pairs:
+        window._on_load_connected(descriptor, live)
+    assert len(window.documents) == 2
+    assert window._act_refresh.isEnabled()
+
+
+def test_open_configuration_refuses_an_invalid_one(
+    config_home: Path, window: ViewerWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a corrupt configuration is never opened, and connects nothing.
+
+    Its card is not activatable, so this is defence -- and the payload of an invalid
+    configuration is empty, thus a load which went ahead would connect nothing, publish
+    nothing and leave the workspace on a landing page with no explanation at all.
+
+    The four assertions below all hold in the untouched state, which is why the dialog
+    is stubbed and asserted on: without the guard the empty payload takes the
+    'references no stream' branch, which also connects, publishes and clears nothing, so
+    the *only* observable difference is the message box. Unstubbed, that box used to
+    make the mutated test hang rather than fail -- a modal blocks forever and
+    'pytest-timeout''s signal method cannot interrupt one.
+    """
+    directory = config_home / ".mne-lsl" / "viewer" / "configurations"
+    directory.mkdir(parents=True)
+    (directory / "broken.json").write_text("{", encoding="utf-8")
+    calls = _spy_open(monkeypatch)
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    window.reload_configurations()
+    assert _card(window, "broken").state == STATE_INVALID
+    window.open_configuration("broken")
+    assert calls == []
+    assert window._loading is None
+    assert window.documents == ()
+    assert shown == []
+
+
+def test_open_configuration_refuses_an_event_only_configuration(
+    config_home: Path,
+    window: ViewerWindow,
+    descriptor: Callable[..., StreamDescriptor],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a configuration of event sources alone is refused instead of hanging.
+
+    Only reachable from a hand-edited file -- a saved workspace always holds at least
+    one document -- and it has to be refused rather than submitted: an empty batch makes
+    the connector emit nothing at all, so the load never finishes and the card stays on
+    'Connecting…' with Refresh disabled for the rest of the session.
+    """
+    markers = descriptor(name="markers", stype="annotations", sfreq=0.0)
+    identity = markers.identity.as_tuple()
+    _write_config("events only", [identity])
+    calls = _spy_open(monkeypatch)
+    shown = _stub_box(monkeypatch, "critical", QMessageBox.StandardButton.Ok)
+    window.reload_configurations()
+    window._on_streams_found([markers])
+    assert _card(window, "events only").state == STATE_AVAILABLE
+    window.open_configuration("events only")
+    assert calls == []
+    assert window._loading is None
+    assert window._act_refresh.isEnabled()
+    assert len(shown) == 1
+    assert "no stream this viewer can open" in shown[0]

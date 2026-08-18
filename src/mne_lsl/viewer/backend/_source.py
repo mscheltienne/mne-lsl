@@ -66,6 +66,7 @@ def _descriptor(sinfo: _BaseStreamInfo) -> StreamDescriptor:
         sfreq=sinfo.sfreq,
         hostname=sinfo.hostname,
         dtype=sinfo.dtype,
+        uid=sinfo.uid,
     )
 
 

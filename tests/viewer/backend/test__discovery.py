@@ -3,12 +3,19 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import warnings
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
 
-from mne_lsl.viewer.backend import Connector, Discovery, _discovery
-from mne_lsl.viewer.backend._discovery import _ConnectorWorker, _DiscoveryWorker
+from mne_lsl.viewer.backend import Connector, Discovery, Prober, _discovery
+from mne_lsl.viewer.backend._discovery import (
+    _PROBE_WORKERS,
+    _ConnectorWorker,
+    _DiscoveryWorker,
+    _ProbeWorker,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -55,6 +62,16 @@ def connector(
 ) -> Generator[Connector, None, None]:
     """Yield a connector object, stopped at teardown; see 'discovery' for the args."""
     obj = Connector()
+    yield obj
+    obj.stop()
+
+
+@pytest.fixture
+def prober(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> Generator[Prober, None, None]:
+    """Yield a prober object, stopped at teardown; see 'discovery' for the args."""
+    obj = Prober()
     yield obj
     obj.stop()
 
@@ -481,3 +498,231 @@ def test_connector_stop_cancels_the_pending_connections(
     assert len(dummies) == 1, "the batch continued past the cancellation"
     assert dummies[0].disconnected == 1
     assert received == []
+
+
+# -- Prober ----------------------------------------------------------------------------
+def test_probe_worker_reports_every_outcome(
+    monkeypatch: pytest.MonkeyPatch, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that one raising probe is reported without abandoning its siblings.
+
+    A raise escaping a pool slot is invisible beyond a log line and would leave every
+    sibling of the batch unreported, i.e. its cards checking forever. Run directly on
+    the main thread: the worker is a plain QObject, so no thread and no network is used.
+    """
+    good, bad = descriptor(name="good"), descriptor(name="bad")
+
+    def _probe(item: StreamDescriptor) -> list[str]:
+        if item is bad:
+            raise RuntimeError("the inlet did not open")
+        return ["Fp1", "Cz"]
+
+    monkeypatch.setattr(_discovery, "probe_channels", _probe)
+    events: list[tuple] = []
+    worker = _ProbeWorker()
+    worker.generation = 5  # what 'Prober.probe' mirrors onto the worker
+    worker.resolved.connect(lambda *args: events.append(("resolved", *args)))
+    worker.failed.connect(lambda *args: events.append(("failed", *args)))
+    worker.run(5, (good, bad))
+    assert sorted(events) == sorted(
+        [
+            ("resolved", 5, good, ["Fp1", "Cz"]),
+            ("failed", 5, bad, "the inlet did not open"),
+        ]
+    )
+
+
+def test_probe_worker_skips_a_superseded_request(
+    monkeypatch: pytest.MonkeyPatch, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a request whose generation is stale probes nothing at all.
+
+    'QThread.quit' leaves the requests already posted in the thread's queue and a
+    restarted thread drains them from the front, thus without this check every batch a
+    'stop' cancelled would be replayed in full by the next 'probe'.
+    """
+    calls: list[StreamDescriptor] = []
+    monkeypatch.setattr(_discovery, "probe_channels", lambda item: calls.append(item))
+    events: list[tuple] = []
+    worker = _ProbeWorker()
+    worker.generation = 9
+    worker.resolved.connect(lambda *args: events.append(args))
+    worker.failed.connect(lambda *args: events.append(args))
+    worker.run(8, (descriptor(),))
+    assert calls == []
+    assert events == []
+
+
+def test_probe_worker_cancels_the_rest_on_a_generation_bump(
+    monkeypatch: pytest.MonkeyPatch, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a batch superseded while it runs emits nothing more.
+
+    The first probe to complete bumps the generation itself, so the check inside the
+    completion loop is the only thing between a stale batch and six results written into
+    the probe cache under uids the interface has already replaced.
+    """
+    submitted = tuple(descriptor(name=f"s{k}") for k in range(6))
+    worker = _ProbeWorker()
+    worker.generation = 1
+    calls: list[StreamDescriptor] = []
+
+    def _probe(item: StreamDescriptor) -> list[str]:
+        calls.append(item)
+        worker.generation = 2  # the pass is superseded from under the batch
+        return ["Cz"]
+
+    monkeypatch.setattr(_discovery, "probe_channels", _probe)
+    events: list[tuple] = []
+    worker.resolved.connect(lambda *args: events.append(args))
+    worker.failed.connect(lambda *args: events.append(args))
+    worker.run(1, submitted)
+    assert calls, "the batch never started"
+    assert events == []
+
+
+def test_probe_worker_uses_the_configured_pool_size(
+    monkeypatch: pytest.MonkeyPatch, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that the pool is sized by the module constant.
+
+    Weak on its own, and kept because this is the single place the number appears: a
+    dropped 'max_workers' makes six distinct streams cost three seconds instead of one,
+    with nothing failing.
+    """
+    seen: list[int | None] = []
+
+    class _Spy(ThreadPoolExecutor):
+        """Executor recording the worker count it was built with."""
+
+        def __init__(self, max_workers: int | None = None, **kwargs: object) -> None:
+            seen.append(max_workers)
+            super().__init__(max_workers=max_workers, **kwargs)
+
+    monkeypatch.setattr(_discovery, "ThreadPoolExecutor", _Spy)
+    monkeypatch.setattr(_discovery, "probe_channels", lambda item: ["Cz"])
+    worker = _ProbeWorker()
+    worker.generation = 1
+    worker.run(1, (descriptor(),))
+    assert seen == [_PROBE_WORKERS]
+    assert _PROBE_WORKERS == 4
+
+
+def test_prober_leaves_the_warning_filters_alone(
+    monkeypatch: pytest.MonkeyPatch, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that the probe's warning suppression does not outlive its batch.
+
+    The suppression is installed inside a 'catch_warnings' block. Dropping that block --
+    or installing the filters permanently -- silently disables warnings-as-errors for
+    every 'RuntimeWarning' of the rest of the session, which would hide unrelated
+    defects in every later test rather than failing this one.
+    """
+    monkeypatch.setattr(_discovery, "probe_channels", lambda item: ["Cz"])
+    worker = _ProbeWorker()
+    worker.generation = 1
+    worker.run(1, (descriptor(),))
+    with pytest.raises(RuntimeWarning, match=_discovery._PROBE_NOTICE):
+        warnings.warn(f"{_discovery._PROBE_NOTICE}.", RuntimeWarning, stacklevel=1)
+
+
+def test_prober_drops_a_stale_result(
+    prober: Prober, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a result from a superseded batch is never published.
+
+    The worker-side check cannot see a 'stop' which happens after it emits, thus the
+    owner-side check is not redundant with it: each covers a different window, and a
+    result slipping through lands in the interface's probe cache under a stale uid.
+    """
+    received: list[tuple] = []
+    prober.resolved.connect(lambda *args: received.append(args))
+    prober.failed.connect(lambda *args: received.append(args))
+    prober._on_resolved(42, descriptor(), ["Cz"])
+    prober._on_failed(42, descriptor(), "boom")
+    assert received == []
+
+
+def test_prober_resolves_a_real_stream(
+    prober: Prober, qtbot: QtBot, outlets: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a real outlet is probed through the worker thread.
+
+    The **submitted descriptor** must come back, not its identity: the cache is keyed on
+    '(identity, uid)', so an identity-only payload would degrade the cache to
+    'cache forever' and a re-provisioned stream keeps its stale channel set.
+    """
+    descriptor = outlets(n_channels=3, ch_names=["Fp1", "Fp2", "Cz"])
+    with qtbot.waitSignal(prober.resolved, timeout=15000) as blocker:
+        prober.probe([descriptor])
+    published, names = blocker.args
+    assert published == descriptor
+    assert published.uid == descriptor.uid
+    assert names == ["Fp1", "Fp2", "Cz"]
+
+
+def test_prober_resolves_a_nameless_stream(
+    prober: Prober, qtbot: QtBot, outlets: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a stream publishing no channel description still probes successfully.
+
+    The reader falls back to channel IDs and warns about it, and a warning is an error
+    here, so without the worker's suppression the batch reports 'failed' and the card
+    reads 'could not reach' for a stream which is present and perfectly matchable. Those
+    fallback names are also what a *connection* to the same stream in the same process
+    reports, which is what makes the two lists comparable. It additionally fails if the
+    names are read from 'get_channel_names()', which returns nothing at all here.
+    """
+    descriptor = outlets(n_channels=3, ch_names=[])
+    with qtbot.waitSignal(prober.resolved, timeout=15000) as blocker:
+        prober.probe([descriptor])
+    published, names = blocker.args
+    assert published == descriptor
+    assert names == ["0", "1", "2"]
+
+
+def test_prober_resolves_a_duplicate_name_stream(
+    prober: Prober, qtbot: QtBot, outlets: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a duplicate-name stream probes to whatever a connection would report.
+
+    The property that matters is agreement, not which list wins: the probe decides
+    whether a saved configuration is loadable, and the connection decides whether the
+    load then succeeds, so the two reading one description differently is a card saying
+    available above a load that refuses.
+
+    Run with this suite's warnings-as-errors in force and **no ambient relaxation**,
+    which is the whole point. The worker suppresses exactly one notice, the outer one
+    about the description as a whole; the inner duplicate-name warning still reaches the
+    reader, which catches it itself and falls back to channel identifiers. Widening the
+    suppression to the inner warning would let the de-duplication through here and
+    produce ``['Cz-0', 'Cz-1', 'Fp1']`` from the probe while a connection in the same
+    process still reported ``['0', '1', '2']`` -- so this fails under exactly that
+    mutation, which the previous version of it could not, having relaxed the filter that
+    tells them apart.
+
+    Not relaxing the filter also keeps the worker's own ``catch_warnings`` from
+    overlapping one on this thread: both save and restore the process-global filter
+    list, and whichever leaves last wins.
+    """
+    descriptor = outlets(n_channels=3, ch_names=["Cz", "Cz", "Fp1"])
+    with qtbot.waitSignal(prober.resolved, timeout=15000) as blocker:
+        prober.probe([descriptor])
+    published, names = blocker.args
+    assert published == descriptor
+    assert names == ["0", "1", "2"]
+
+
+def test_prober_stop_is_idempotent_and_restartable(
+    prober: Prober, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that stopping twice is a no-op and that a probe restarts the worker."""
+    monkeypatch.setattr(_discovery, "probe_channels", lambda item: ["Cz"])
+    with qtbot.waitSignal(prober.resolved, timeout=10000):
+        prober.probe([object()])
+    prober.stop()
+    assert not prober._thread.isRunning()
+    prober.stop()
+    assert not prober._thread.isRunning()
+    with qtbot.waitSignal(prober.resolved, timeout=10000):
+        prober.probe([object()])

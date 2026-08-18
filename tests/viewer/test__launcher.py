@@ -3,29 +3,55 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from qtpy.QtCore import QItemSelectionModel, Qt
+from qtpy.QtCore import QEvent, QItemSelectionModel, QPointF, Qt
+from qtpy.QtGui import QKeyEvent, QMouseEvent
 from qtpy.QtWidgets import QAbstractItemView
 
 import mne_lsl.viewer._launcher
-from mne_lsl.viewer._launcher import PROGRESS_TEXT, EmptyStatePage
+from mne_lsl.viewer._launcher import (
+    PROGRESS_TEXT,
+    ConfigurationCard,
+    EmptyStatePage,
+)
+from mne_lsl.viewer.backend import (
+    STATE_AVAILABLE,
+    STATE_CHECKING,
+    STATE_INVALID,
+    STATE_LOADING,
+    STATE_UNAVAILABLE_CHANNELS,
+    STATE_UNAVAILABLE_NO_MATCH,
+    ConfigurationState,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
     from types import ModuleType
 
+    from qtpy.QtWidgets import QApplication
+
     from mne_lsl.viewer.backend import StreamDescriptor
+    from mne_lsl.viewer.theme import ThemeController
 
 # Nothing the page may name: it lists what it is given, reports what it is told and
 # resolves nothing itself. This is the property the whole design rests on -- the window
-# owns discovery, the connections and the configurations.
+# owns discovery, the connections and the configurations. It is why the page's three
+# configuration signals carry a '_requested' suffix: a signal named after one of the
+# persistence verbs below would trip this check, which cannot tell a signal definition
+# from a call.
 _FORBIDDEN = frozenset(
     {
         "Connector",
         "Discovery",
+        "Prober",
+        "ViewerConfig",
+        "config_dir",
         "connect_stream",
         "create_stream",
+        "delete_configuration",
+        "evaluate_state",
         "list_configurations",
         "probe_channels",
+        "rename_configuration",
         "resolve_descriptors",
         "save_configuration",
     }
@@ -275,3 +301,311 @@ def test_launcher_is_passive(
     imports, identifiers = module_scan(mne_lsl.viewer._launcher)
     segments = {segment for path in imports for segment in path.split(".")}
     assert (segments | identifiers).isdisjoint(_FORBIDDEN)
+
+
+# -- the saved-configuration cards -----------------------------------------------------
+def _state(name: str, state: str, reason: str = "", n_streams: int = 0):
+    """Return one rendered card row, as the window's availability check emits it."""
+    return ConfigurationState(
+        name=name, state=state, reason=reason, n_streams=n_streams
+    )
+
+
+def _click(card: ConfigurationCard) -> None:
+    """Release the left button at the centre of ``card``.
+
+    The handler is driven rather than 'QTest.mouseClick': the activation gate is a
+    property of the card and not of Qt's own event filtering, and a synthetic release
+    reaching a non-activatable card is exactly what the gate exists to refuse.
+    """
+    centre = QPointF(card.rect().center())
+    card.mouseReleaseEvent(
+        QMouseEvent(
+            QEvent.Type.MouseButtonRelease,
+            centre,
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+
+
+def test_configuration_region_hidden_when_empty(page: EmptyStatePage) -> None:
+    """Test that a page with no saved configuration shows no configuration region.
+
+    Rendering the group box regardless would put an empty framed panel on the page of
+    every first launch, which is the state the launcher spends most of its life in.
+    """
+    assert not page._cards_group.isVisibleTo(page)
+    page.set_configurations([_state("one", STATE_AVAILABLE, n_streams=2)])
+    assert page._cards_group.isVisibleTo(page)
+    page.set_configurations([])
+    assert not page._cards_group.isVisibleTo(page)
+
+
+def test_cards_are_persistent_widgets(page: EmptyStatePage) -> None:
+    """Test that the same card object survives three passes which change its state.
+
+    Object identity and not the count: a page which tears the region down and rebuilds
+    it drops keyboard focus mid-check and makes the move-to-the-top transition
+    impossible, while keeping the count exactly right.
+    """
+    page.set_configurations([_state("one", STATE_CHECKING)])
+    card = page._cards["one"]
+    for state in (STATE_UNAVAILABLE_NO_MATCH, STATE_AVAILABLE, STATE_LOADING):
+        page.set_configurations([_state("one", state, n_streams=2)])
+        assert page._cards["one"] is card
+        assert card.state == state
+
+
+def test_card_removed_when_the_configuration_vanishes(page: EmptyStatePage) -> None:
+    """Test that a name absent from a new pass loses its card.
+
+    A deleted configuration otherwise keeps a card until the window is reopened, and
+    activating it starts a load of a file which no longer exists.
+    """
+    page.set_configurations(
+        [_state("one", STATE_AVAILABLE), _state("two", STATE_INVALID)]
+    )
+    assert page.configuration_names() == ("one", "two")
+    page.set_configurations([_state("two", STATE_INVALID)])
+    assert page.configuration_names() == ("two",)
+    assert "one" not in page._cards
+
+
+def test_card_group_order(page: EmptyStatePage) -> None:
+    """Test that the cards group by availability and sort by name inside a group.
+
+    'unavailable-channels' belongs to the **top** group: it did identity-match, so
+    burying it next to the streams which are simply absent hides the exact reason the
+    eager probe exists to produce. The invalid card sorts last, and ties break on the
+    casefolded name so two names differing only by case cannot swap between two passes.
+    """
+    page.set_configurations(
+        [
+            _state("zz-invalid", STATE_INVALID, "unreadable"),
+            _state("mm-no-match", STATE_UNAVAILABLE_NO_MATCH, "absent"),
+            _state("B-available", STATE_AVAILABLE, n_streams=1),
+            _state("a-channels", STATE_UNAVAILABLE_CHANNELS, "channels"),
+            _state("c-checking", STATE_CHECKING, "checking"),
+        ]
+    )
+    assert page.configuration_names() == (
+        "a-channels",
+        "B-available",
+        "c-checking",
+        "mm-no-match",
+        "zz-invalid",
+    )
+
+
+def test_only_available_is_clickable(page: EmptyStatePage) -> None:
+    """Test that a click opens the configuration of an available card and of no other.
+
+    Activating a checking card starts a load against a channel set nobody has read yet,
+    which is the worst of the six state errors: the load connects every stream and only
+    then finds out the configuration does not match.
+    """
+    states = (
+        STATE_CHECKING,
+        STATE_AVAILABLE,
+        STATE_UNAVAILABLE_CHANNELS,
+        STATE_UNAVAILABLE_NO_MATCH,
+        STATE_INVALID,
+        STATE_LOADING,
+    )
+    opened: list[str] = []
+    page.open_configuration_requested.connect(opened.append)
+    for state in states:
+        page.set_configurations([_state(state, state, n_streams=1)])
+        _click(page._cards[state])
+    assert opened == [STATE_AVAILABLE]
+
+
+def test_loading_disables_every_card(page: EmptyStatePage) -> None:
+    """Test that no card is activatable while a configuration is being opened.
+
+    Two concurrent loads mean two load attempts, and the second silently strands the
+    streams the first one connected.
+
+    Driven by the explicit flag, not by a card carrying the loading state: the caller
+    has to say so, because the row of the configuration being opened can disappear --
+    delete it mid-load and an inferred flag would re-activate every sibling while the
+    load is still running. This fails if the flag stops reaching the cards.
+    """
+    opened: list[str] = []
+    page.open_configuration_requested.connect(opened.append)
+    page.set_configurations([_state("ready", STATE_AVAILABLE, n_streams=1)])
+    assert page._cards["ready"].activatable
+    page.set_configurations(
+        [
+            _state("ready", STATE_AVAILABLE, n_streams=1),
+            _state("busy", STATE_LOADING, "Connecting…"),
+        ],
+        loading=True,
+    )
+    assert not page._cards["ready"].activatable
+    _click(page._cards["ready"])
+    assert opened == []
+    # and the row being opened can vanish without reviving its siblings
+    page.set_configurations(
+        [_state("ready", STATE_AVAILABLE, n_streams=1)], loading=True
+    )
+    assert not page._cards["ready"].activatable
+    _click(page._cards["ready"])
+    assert opened == []
+
+
+def test_card_open_by_keyboard(page: EmptyStatePage) -> None:
+    """Test that Return, Enter and Space open a focusable available card.
+
+    Dropping the key handler makes the whole feature mouse-only, and a non-activatable
+    card must not be a tab stop either or the focus ring lands on something inert.
+    """
+    opened: list[str] = []
+    page.open_configuration_requested.connect(opened.append)
+    page.set_configurations([_state("one", STATE_AVAILABLE, n_streams=1)])
+    card = page._cards["one"]
+    assert card.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+        card.keyPressEvent(
+            QKeyEvent(QEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier)
+        )
+    assert opened == ["one", "one", "one"]
+    page.set_configurations([_state("one", STATE_CHECKING)])
+    assert card.focusPolicy() == Qt.FocusPolicy.NoFocus
+    card.keyPressEvent(
+        QKeyEvent(
+            QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier
+        )
+    )
+    assert opened == ["one", "one", "one"]
+
+
+def test_card_reason_is_never_markup(page: EmptyStatePage) -> None:
+    """Test that a reason built from a stream name renders verbatim, tooltip escaped.
+
+    A stream name arrives over the network and lands in an unavailability reason: a
+    'QLabel' is 'AutoText' by default, so one named '<!--' erases every character after
+    it from the line and the reason shown is not the reason computed. A tooltip has no
+    format of its own and always auto-detects rich text, hence the escaping.
+    """
+    reason = "No matching stream: <!-- (eeg/<b>x</b>)."
+    page.set_configurations([_state("one", STATE_UNAVAILABLE_NO_MATCH, reason)])
+    card = page._cards["one"]
+    assert card._reason.textFormat() == Qt.TextFormat.PlainText
+    assert card._title.textFormat() == Qt.TextFormat.PlainText
+    assert card._reason.text() == reason
+    assert "&lt;!--" in card._reason.toolTip()
+    assert "<b>" not in card._reason.toolTip()
+
+
+def test_delete_enabled_and_rename_disabled_on_invalid(page: EmptyStatePage) -> None:
+    """Test that Delete works in every state and Rename does not on the broken ones.
+
+    Deleting the file is the only way to clear a corrupt configuration from the
+    interface, so gating Delete on activatability makes it unremovable. Renaming one
+    whose own name could not be read would write a file titled by the card's fallback,
+    and renaming one which is opening changes the name under the load in flight.
+    """
+    states = (
+        STATE_CHECKING,
+        STATE_AVAILABLE,
+        STATE_UNAVAILABLE_CHANNELS,
+        STATE_UNAVAILABLE_NO_MATCH,
+        STATE_INVALID,
+        STATE_LOADING,
+    )
+    page.set_configurations([_state(state, state, n_streams=1) for state in states])
+    for state in states:
+        card = page._cards[state]
+        assert card._delete.isEnabled(), state
+        assert card._rename.isEnabled() is (
+            state not in (STATE_INVALID, STATE_LOADING)
+        ), state
+
+
+def test_card_signals_carry_the_name(page: EmptyStatePage) -> None:
+    """Test that all three card signals carry the configuration name.
+
+    Emitting an index instead would open, rename or delete a different configuration as
+    soon as a pass reorders the cards, which every pass may do.
+    """
+    seen: list[tuple[str, str]] = []
+    page.open_configuration_requested.connect(lambda name: seen.append(("open", name)))
+    page.rename_configuration_requested.connect(
+        lambda name: seen.append(("rename", name))
+    )
+    page.delete_configuration_requested.connect(
+        lambda name: seen.append(("delete", name))
+    )
+    page.set_configurations([_state("mine", STATE_AVAILABLE, n_streams=1)])
+    card = page._cards["mine"]
+    _click(card)
+    card._rename.click()
+    card._delete.click()
+    assert seen == [("open", "mine"), ("rename", "mine"), ("delete", "mine")]
+
+
+def test_set_configurations_updates_in_place_not_by_index(page: EmptyStatePage) -> None:
+    """Test that a card keeps its own name when a pass reorders the region.
+
+    A positional card-to-name map opens the configuration which now occupies the row the
+    pressed card used to be in, while the label under the pointer says otherwise.
+    """
+    opened: list[str] = []
+    page.open_configuration_requested.connect(opened.append)
+    page.set_configurations(
+        [_state("aaa", STATE_AVAILABLE, n_streams=1), _state("bbb", STATE_CHECKING)]
+    )
+    assert page.configuration_names() == ("aaa", "bbb")
+    page.set_configurations(
+        [
+            _state("aaa", STATE_UNAVAILABLE_NO_MATCH, "absent"),
+            _state("bbb", STATE_AVAILABLE, n_streams=1),
+        ]
+    )
+    assert page.configuration_names() == ("bbb", "aaa")
+    card = page._cards["bbb"]
+    assert card._title.text() == "bbb"
+    _click(card)
+    assert opened == ["bbb"]
+
+
+def test_retint_icons_reaches_every_card(
+    app: QApplication, controller: ThemeController, page: EmptyStatePage
+) -> None:
+    """Test that a theme flip rebuilds the glyph of every card.
+
+    A 'QIcon' bakes its colour at creation, thus a flip which does not replay the table
+    leaves the cards holding the previous mode's glyphs while everything else moved.
+    """
+    controller.install(app, "light")
+    page.set_configurations(
+        [
+            _state("one", STATE_AVAILABLE, n_streams=1),
+            _state("two", STATE_INVALID, "bad"),
+        ]
+    )
+    page.retint_icons()
+    before = {
+        name: card._glyph.pixmap().toImage() for name, card in page._cards.items()
+    }
+    controller.set_mode("dark")
+    page.retint_icons()
+    for name, card in page._cards.items():
+        assert not before[name].isNull(), name
+        assert card._glyph.pixmap().toImage() != before[name], name
+
+
+def test_cards_region_scrolls(page: EmptyStatePage) -> None:
+    """Test that a long list of configurations scrolls instead of growing the page.
+
+    Without the cap, 20 saved configurations push the available-stream table off the
+    page entirely, i.e. the region for building a *new* workspace becomes unreachable.
+    """
+    page.set_configurations(
+        [_state(f"cfg-{index:02d}", STATE_CHECKING) for index in range(20)]
+    )
+    assert page._cards_scroll.maximumHeight() == mne_lsl.viewer._launcher._CARDS_MAX_H
+    assert page._cards_host.sizeHint().height() > page._cards_scroll.maximumHeight()

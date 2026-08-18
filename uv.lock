@@ -1330,12 +1330,14 @@ test = [
     { name = "pylabrecorder" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pytest-qt" },
     { name = "pytest-randomly" },
     { name = "pytest-rerunfailures" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "pyxdf" },
+]
+test-viewer = [
+    { name = "pytest-qt" },
 ]
 
 [package.metadata]
@@ -1402,13 +1404,13 @@ test = [
     { name = "pylabrecorder", specifier = ">=0.3.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov" },
-    { name = "pytest-qt" },
     { name = "pytest-randomly" },
     { name = "pytest-rerunfailures", specifier = ">=10.2" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "pyxdf" },
 ]
+test-viewer = [{ name = "pytest-qt" }]
 
 [[package]]
 name = "mypy"

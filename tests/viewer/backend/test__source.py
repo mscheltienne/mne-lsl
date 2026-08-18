@@ -160,6 +160,7 @@ def test_resolve_descriptors_is_sorted(monkeypatch: pytest.MonkeyPatch) -> None:
                 sfreq=100.0,
                 hostname="host-1",
                 dtype="float32",
+                uid=f"uid-{source_id}",
             )
             for name, source_id in identities
         ],
@@ -193,6 +194,33 @@ def test_resolve_descriptors_same_name(
     # the channel counts differ, thus a mix-up between the two cannot pass unnoticed.
     assert found[first.identity].n_channels == 4
     assert found[second.identity].n_channels == 6
+
+
+def test_resolve_descriptors_carries_a_changing_uid(
+    outlets: Callable[..., StreamDescriptor],
+) -> None:
+    """Test that the uid is the outlet instance's and not derived from the identity.
+
+    Two outlets are published under one identity and differ only by their channel count,
+    which is what keeps them apart in 'resolve_streams', whose de-duplication ignores
+    the uid. Both descriptors therefore carry the *same* identity and must carry
+    different uids: a uid derived from the identity, or hardcoded to '', keys the cache
+    identically for two different outlet instances, so a re-provisioned stream would
+    never be re-probed and its stale channel set trusted for the session.
+    """
+    name = f"mne-lsl-viewer-{uuid.uuid4()}"
+    source_id = str(uuid.uuid4())
+    outlets(name=name, source_id=source_id, n_channels=4)
+    outlets(name=name, source_id=source_id, n_channels=6)
+    found = [
+        descriptor
+        for descriptor in resolve_descriptors(2.0)
+        if descriptor.identity.name == name
+    ]
+    assert len(found) == 2
+    assert found[0].identity == found[1].identity
+    assert all(isinstance(d.uid, str) and d.uid for d in found)
+    assert found[0].uid != found[1].uid
 
 
 def test_probe_channels_same_name(outlets: Callable[..., StreamDescriptor]) -> None:
