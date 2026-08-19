@@ -9,7 +9,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mne_lsl.viewer.backend import Connector, Discovery, Prober, _discovery
+from mne_lsl.viewer.backend import (
+    RESUME_LIVE,
+    RESUME_MISMATCH,
+    RESUME_RETRY,
+    Connector,
+    Discovery,
+    Prober,
+    StreamIdentity,
+    StreamSignature,
+    _discovery,
+    release_stream,
+)
 from mne_lsl.viewer.backend._discovery import (
     _PROBE_WORKERS,
     _ConnectorWorker,
@@ -232,7 +243,7 @@ def test_release_swallows_a_failure(caplog: pytest.LogCaptureFixture) -> None:
             raise RuntimeError("not connected")
 
     caplog.set_level(logging.WARNING, logger="mne_lsl")
-    _discovery._release(_Stubborn())  # the failure is swallowed, not propagated
+    release_stream(_Stubborn())  # the failure is swallowed, not propagated
     assert "not connected" in caplog.text
 
 
@@ -726,3 +737,100 @@ def test_prober_stop_is_idempotent_and_restartable(
     assert not prober._thread.isRunning()
     with qtbot.waitSignal(prober.resolved, timeout=10000):
         prober.probe([object()])
+
+
+# -- submit_reconnect ------------------------------------------------------------------
+def _signature(**kwargs) -> StreamSignature:
+    """Return a signature built of plain values, with every field defaulted."""
+    fields = dict(
+        identity=StreamIdentity(name="Polar", stype="eeg", source_id="src-1"),
+        sfreq=100.0,
+        dtype="float32",
+        ch_names=("Fp1", "Fpz", "ECG", "TRIGGER"),
+    )
+    fields.update(kwargs)
+    return StreamSignature(**fields)
+
+
+@pytest.mark.parametrize(
+    ("actual", "outcome", "detail", "released"),
+    [
+        pytest.param(_signature(), RESUME_LIVE, "", 0, id="live"),
+        pytest.param(
+            _signature(sfreq=200.0),
+            RESUME_MISMATCH,
+            "sampling rate changed",
+            1,
+            id="mismatch",
+        ),
+    ],
+)
+def test_submit_reconnect(
+    app: QApplication,
+    qtbot: QtBot,
+    monkeypatch: pytest.MonkeyPatch,
+    actual: StreamSignature,
+    outcome: str,
+    detail: str,
+    released: int,
+) -> None:
+    """Test the two outcomes of a reconnection which did reconnect.
+
+    A refused stream must be released on the worker: dropping it leaks a live inlet and
+    its acquisition thread for the life of the process. Kills collapsing either branch,
+    and kills forgetting the release.
+    """
+    stream = _DummyStream()
+    monkeypatch.setattr(_discovery, "reconnect_stream", lambda item: None)
+    monkeypatch.setattr(_discovery, "stream_signature", lambda item: actual)
+    seen: list[tuple[str, str]] = []
+    _discovery.submit_reconnect(stream, _signature(), lambda *args: seen.append(args))
+    qtbot.waitUntil(lambda: len(seen) == 1, timeout=10000)
+    assert seen[0][0] == outcome
+    assert detail in seen[0][1]
+    assert stream.disconnected == released
+
+
+def test_submit_reconnect_retries_when_the_reconnection_raises(
+    app: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a reconnection which raised reports a retry with the reason.
+
+    An absent identity is the normal case while the source is still down, so it must be
+    an outcome and never an exception escaping the runnable, where it would be invisible
+    beyond a log line. Kills dropping the 'except'.
+    """
+
+    def _raise(item: object) -> None:
+        raise RuntimeError("do not uniquely identify an LSL stream")
+
+    monkeypatch.setattr(_discovery, "reconnect_stream", _raise)
+    seen: list[tuple[str, str]] = []
+    _discovery.submit_reconnect(
+        _DummyStream(), _signature(), lambda *args: seen.append(args)
+    )
+    qtbot.waitUntil(lambda: len(seen) == 1, timeout=10000)
+    assert seen == [(RESUME_RETRY, "do not uniquely identify an LSL stream")]
+
+
+def test_submit_reconnect_retries_when_the_signature_raises(
+    app: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a stream lost again mid-comparison is released and retried.
+
+    'stream_signature' reads 'stream.info', which raises on a stream the acquisition
+    thread has just reset, and the reconnection did open an inlet before that. Kills
+    dropping the second 'except', which would leak that inlet.
+    """
+    stream = _DummyStream()
+
+    def _raise(item: object) -> None:
+        raise RuntimeError("The Stream is not connected")
+
+    monkeypatch.setattr(_discovery, "reconnect_stream", lambda item: None)
+    monkeypatch.setattr(_discovery, "stream_signature", _raise)
+    seen: list[tuple[str, str]] = []
+    _discovery.submit_reconnect(stream, _signature(), lambda *args: seen.append(args))
+    qtbot.waitUntil(lambda: len(seen) == 1, timeout=10000)
+    assert seen[0][0] == RESUME_RETRY
+    assert stream.disconnected == 1

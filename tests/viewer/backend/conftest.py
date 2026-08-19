@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,14 +17,13 @@ def streams() -> Generator[list[BaseStream], None, None]:
     Every test which obtains a connected stream appends it here instead of disconnecting
     it itself: a failing assertion would otherwise leave a live inlet and its
     acquisition thread behind.
+
+    Nothing is suppressed around the disconnection: 'connected' reads a partially set
+    state as not connected and 'disconnect' is idempotent, so a stream whose connection
+    raised halfway through is torn down here without raising.
     """
     connected: list[BaseStream] = []
     yield connected
     for stream in reversed(connected):
-        # Neither 'connected' nor 'disconnect' can be trusted on a stream whose
-        # connection raised halfway through -- 'connected' asserts that its attributes
-        # are either all set or all unset -- thus the teardown cannot gate on the first
-        # and has to tolerate the second raising.
-        with contextlib.suppress(AssertionError):
-            stream.disconnect()
+        stream.disconnect()
     connected.clear()

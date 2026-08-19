@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import multiprocessing as mp
 import os
 import sysconfig
 import time
@@ -126,6 +127,7 @@ def lsl_stream(
         ch_types: list[str] | None = None,
         ch_names: list[str] | None = None,
         ch_units: list[str] | None = None,
+        dtype: str = "float32",
     ) -> tuple[StreamLSL, Callable[..., None]]:
         """Create one outlet, connect a stream to it and return ``(stream, push)``.
 
@@ -134,6 +136,10 @@ def lsl_stream(
         'n_stim' channels are stim channels, unless ``ch_types`` overrides the whole
         list; ``ch_names`` and ``ch_units`` override theirs the same way, which is what
         lets a test publish a mixed-type stream or a duplicate name on purpose.
+
+        ``dtype`` is the channel format published on the wire, e.g. ``'int32'``: an
+        integer stream is a legal LSL stream and the display draws one, which is what
+        makes the NaN rule of an un-filled window dtype-dependent.
 
         The LSL name is suffixed with the creation count, not only with the test name:
         a test asking the factory twice would otherwise publish two outlets under one
@@ -146,7 +152,7 @@ def lsl_stream(
         """
         name = f"mne-lsl-viewer-{request.node.name}-{len(created)}"
         source_id = str(uuid.uuid4())
-        sinfo = StreamInfo(name, "eeg", n_channels, sfreq, "float32", source_id)
+        sinfo = StreamInfo(name, "eeg", n_channels, sfreq, dtype, source_id)
         n_data = n_channels - n_stim
         if ch_names is None:
             ch_names = [f"ch{k}" for k in range(n_data)]
@@ -168,7 +174,7 @@ def lsl_stream(
             rng = np.random.default_rng(101)
             # an irregular stream declares 'sfreq == 0': the sample index is the time.
             times = np.arange(n_samples) / sfreq if sfreq else np.arange(n_samples)
-            data = np.empty((n_samples, n_channels), dtype=np.float32)
+            data = np.empty((n_samples, n_channels), dtype=np.float64)
             for k in range(n_data):
                 data[:, k] = np.sin(
                     2 * np.pi * (5 + k) * times
@@ -176,7 +182,11 @@ def lsl_stream(
             data[:, n_data:] = 0.0
             if stim_at is not None:
                 data[stim_at, n_data:] = 3.0
-            outlet.push_chunk(data)
+            # scaled before the cast so that an integer stream carries a real waveform
+            # rather than a column of zeros and ones.
+            if not np.issubdtype(np.dtype(dtype), np.floating):
+                data *= 1000.0
+            outlet.push_chunk(data.astype(dtype))
             deadline = time.monotonic() + _PUSH_DEADLINE
             while time.monotonic() < deadline:
                 if stream.n_new_samples > 0:
@@ -200,6 +210,141 @@ def default_stream(
 ) -> tuple[StreamLSL, Callable[..., None]]:
     """Return the default 8-channel stream and its push callable."""
     return lsl_stream()
+
+
+def _player_target(
+    fname: Path,
+    chunk_size: int,
+    name: str,
+    source_id: str,
+    picks: list[str] | None,
+    status: object,
+) -> None:
+    """Run one player until its status flag is cleared.
+
+    A module-level function, because the default start method on macOS is ``spawn`` and
+    a nested target cannot be pickled. 'PlayerLSL' and the file are both loaded in the
+    child for the same reason.
+    """
+    from mne.io import read_raw_fif
+
+    from mne_lsl.player import PlayerLSL
+
+    raw = read_raw_fif(fname, preload=True)
+    if picks is not None:
+        raw.pick(picks)
+    player = PlayerLSL(raw, chunk_size=chunk_size, name=name, source_id=source_id)
+    player.start()
+    status.value = 1
+    while status.value:
+        time.sleep(0.05)
+    player.stop()
+
+
+class _PlayerHandle:
+    """Handle on a player subprocess, restartable under one identity.
+
+    Parameters
+    ----------
+    fname : Path
+        File the player streams.
+    name : str
+        LSL name of the published stream.
+    source_id : str
+        LSL source ID of the published stream, a uuid4 so that concurrent jobs sharing
+        the link cannot collide.
+    manager : multiprocessing.Manager
+        Manager owning the status value, created by the fixture rather than at import
+        time.
+
+    Notes
+    -----
+    ``start`` returns only once the child has published, which is the handshake a poll
+    on discovery would otherwise have to do. ``kill`` is what an outage looks like: the
+    process goes away without stopping its outlet, so the inlet of a consumer raises
+    rather than reading an empty stream forever.
+
+    There is deliberately no clean ``stop``: every test which needs a source to go away
+    needs it to go away *without* closing its outlet, which is the only case liblsl
+    reports at all, and a clean shutdown is already covered without a subprocess.
+    """
+
+    _CHUNK_SIZE = 200
+    _START_DEADLINE = 60.0
+
+    def __init__(self, fname: Path, name: str, source_id: str, manager: object) -> None:
+        self._fname = fname
+        self.name = name
+        self.source_id = source_id
+        self._manager = manager
+        self._status = None
+        self._process = None
+
+    def start(self, picks: list[str] | None = None) -> None:
+        """Start a player, optionally over a subset of the channels."""
+        assert self._process is None  # one process per handle at a time
+        self._status = self._manager.Value("i", 0)
+        self._process = mp.Process(
+            target=_player_target,
+            args=(
+                self._fname,
+                self._CHUNK_SIZE,
+                self.name,
+                self.source_id,
+                picks,
+                self._status,
+            ),
+        )
+        self._process.start()
+        deadline = time.monotonic() + self._START_DEADLINE
+        while self._status.value != 1:
+            # A child which died is reported at once and with its exit code: waiting the
+            # full deadline out turns a bad 'picks' into a minute of silence.
+            if not self._process.is_alive():
+                code = self._process.exitcode
+                self._process = None
+                pytest.fail(f"The player {self.name} exited with code {code}.")
+            if deadline < time.monotonic():
+                self.kill()
+                pytest.fail(f"The player {self.name} never started.")
+            time.sleep(0.01)
+
+    def kill(self) -> None:
+        """Kill the player without letting it close its outlet: an outage."""
+        if self._process is None:
+            return
+        self._process.kill()
+        self._process.join(timeout=5)
+        self._process = None
+
+
+@pytest.fixture
+def player(
+    request: pytest.FixtureRequest, fname: Path
+) -> Generator[Callable[..., _PlayerHandle]]:
+    """Yield a factory creating restartable player subprocesses.
+
+    The only fixture of this package which starts a subprocess, and deliberately so: an
+    outlet answers every assertion which needs a stream to *exist*, while a player is
+    needed only where a source has to genuinely go away and come back. Every handle is
+    killed at teardown, whatever the assertions did.
+    """
+    manager = mp.Manager()
+    handles: list[_PlayerHandle] = []
+
+    def _make(picks: list[str] | None = None) -> _PlayerHandle:
+        """Create one started player under a fresh identity."""
+        name = f"mne-lsl-viewer-{request.node.name}-{len(handles)}"
+        handle = _PlayerHandle(fname, name, str(uuid.uuid4()), manager)
+        handles.append(handle)
+        handle.start(picks)
+        return handle
+
+    yield _make
+    for handle in reversed(handles):
+        handle.kill()
+    handles.clear()
+    manager.shutdown()
 
 
 @pytest.fixture

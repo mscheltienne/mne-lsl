@@ -8,15 +8,19 @@ import numpy as np
 import pytest
 
 from mne_lsl.lsl import StreamInlet
+from mne_lsl.lsl._utils import LostError
 from mne_lsl.stream import BaseStream, StreamLSL
 from mne_lsl.viewer.backend import (
     _source,
     connect_stream,
     create_stream,
     derive_bufsize,
+    disconnect_text,
     probe_channels,
+    reconnect_stream,
     resolve_descriptors,
     stream_identity,
+    stream_signature,
 )
 from mne_lsl.viewer.display import WINDOW_RANGE
 
@@ -363,3 +367,101 @@ def test_stream_identity_rejects_a_non_lsl_stream() -> None:
     """Test that an object which is not an LSL stream is refused by type."""
     with pytest.raises(TypeError, match="only open a document for an LSL stream"):
         stream_identity(object())
+
+
+# -- reconnection ----------------------------------------------------------------------
+class _RecordingStream:
+    """Stand-in recording the calls a reconnection makes, and its connection state."""
+
+    def __init__(self, *, connected: bool) -> None:
+        self.connected = connected
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    def connect(self, **kwargs: object) -> None:
+        """Record the keywords the reconnection passed."""
+        self.calls.append(("connect", kwargs))
+        self.connected = True
+
+    def disconnect(self) -> None:
+        """Record the disconnection and clear the state."""
+        self.calls.append(("disconnect", {}))
+        self.connected = False
+
+
+def test_reconnect_stream_passes_recover_explicitly() -> None:
+    """Test that 'recover=False' is passed explicitly, not inherited from a default.
+
+    'tests/conftest.py::_no_recover' patches the *default* to 'False' for every test, so
+    asserting the effective value would pass even if the viewer passed nothing at all --
+    and would then behave differently in production, where the default is 'True'.
+    """
+    stream = _RecordingStream(connected=False)
+    reconnect_stream(stream)
+    assert stream.calls == [("connect", {"recover": False})]
+
+
+def test_reconnect_stream_disconnects_first() -> None:
+    """Test that an already connected stream is disconnected before it is reconnected.
+
+    'connect()' on a connected stream warns and returns unchanged, which is an error
+    under this suite and, in production, a source which recovered on its own that is
+    silently never reconnected. Kills dropping the guard.
+    """
+    stream = _RecordingStream(connected=True)
+    reconnect_stream(stream)
+    assert [name for name, _ in stream.calls] == ["disconnect", "connect"]
+    assert stream.calls[1][1] == {"recover": False}
+
+
+def test_stream_signature(
+    outlets: Callable[..., StreamDescriptor], streams: list[BaseStream]
+) -> None:
+    """Test that the resume signature is read field by field off a connected stream.
+
+    The channel names come from 'stream.info', never from 'sinfo.get_channel_info()',
+    which re-emits the duplicate-name warning of the initial connection. Kills reading
+    the wrong field, and kills leaving 'dtype' as a 'np.dtype', which would never
+    compare equal to the string a signature carries.
+    """
+    descriptor = outlets(n_channels=3, sfreq=64.0, ch_names=["Fp1", "Fp2", "Cz"])
+    stream = connect_stream(descriptor, 4.0)
+    streams.append(stream)
+    signature = stream_signature(stream)
+    assert signature.identity == descriptor.identity
+    assert signature.sfreq == 64.0
+    assert signature.dtype == "float32"
+    assert signature.ch_names == ("Fp1", "Fp2", "Cz")
+    assert isinstance(signature.dtype, str)
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        pytest.param(LostError("gone"), "Stream lost", id="lost"),
+        pytest.param(None, "Stream disconnected", id="clean"),
+        pytest.param(ValueError("bad"), "Stream error: ValueError", id="other"),
+    ],
+)
+def test_disconnect_text(reason: BaseException | None, expected: str) -> None:
+    """Test that the three disconnection causes get three distinct wordings.
+
+    A lost source, a stream someone else disconnected and an acquisition error are the
+    same state with different reasons, and the operator has to be able to tell them
+    apart. Kills collapsing two branches. 'LostError' is a 'RuntimeError' subclass, so
+    the order of the checks is load-bearing too.
+    """
+    assert disconnect_text(reason) == expected
+    assert len({disconnect_text(r) for r in (LostError("g"), None, ValueError())}) == 3
+
+
+def test_connect_stream_docstring_no_longer_claims_to_be_the_only_recover_writer() -> (
+    None
+):
+    """Test that the note about 'recover' names both writers.
+
+    'reconnect_stream' is the second one, and a stale claim of exclusivity is what makes
+    a reader add a third somewhere else. Kills reverting the correction.
+    """
+    notes = connect_stream.__doc__
+    assert "reconnect_stream" in notes
+    assert "single place in the viewer where ``recover``" not in notes

@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pyqtgraph as pg
-from qtpy.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer, Signal
 from qtpy.QtGui import QColor, QTransform
 from qtpy.QtWidgets import (
     QGraphicsRectItem,
@@ -117,7 +117,17 @@ class TraceDisplay(QWidget):
     not know the channel model exists.
 
     The stream is borrowed, never owned: it is polled and never disconnected here.
+
+    Attributes
+    ----------
+    polled : Signal
+        Emitted after every render tick, whether or not the tick drew anything. Bare, on
+        purpose: what the tick observed about the *connection* is read by the consumer
+        off the stream and off :attr:`TraceDisplay.last_timestamp`, so that no
+        connection semantics enter this widget's signal signature.
     """
+
+    polled = Signal()
 
     def __init__(self, stream: BaseStream, parent: QWidget | None = None) -> None:
         """Initialize the display."""
@@ -149,6 +159,10 @@ class TraceDisplay(QWidget):
         # channels over a 5 s window at 1 kHz. The upgrade is to retain only the banded
         # rows, which is the same change as narrowing the fetch itself.
         self._frame: tuple[list[int], np.ndarray, np.ndarray] | None = None
+        # Newest timestamp of the last window fetched, or 'None' before the first fetch.
+        self._last_ts: float | None = None
+        # Whether the stream may be touched at all, see 'suspend'.
+        self._suspended = False
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._build_ui()
@@ -345,10 +359,52 @@ class TraceDisplay(QWidget):
         """Stop the render clock; idempotent."""
         self._timer.stop()
 
+    def suspend(self, value: bool) -> None:
+        """Stop polling the stream, without stopping the render clock.
+
+        Parameters
+        ----------
+        value : bool
+            Whether the stream is off limits.
+
+        Notes
+        -----
+        Stopping the clock is not enough to keep this widget off a stream: a scroll, a
+        row-count step and a layout change all repaint on their own, and a repaint which
+        finds nothing it can reuse re-reads the window. That is exactly what must not
+        happen while a reconnection is in flight -- the stream is briefly connected with
+        a channel set the layout has not been rebuilt against yet, and the fetch then
+        raises from inside whichever interaction triggered it.
+
+        Separate from the clock rather than folded into it, because the two say
+        different things: a stopped clock is a viewport which does not advance, and a
+        suspended display is a stream which may not be read.
+        """
+        self._suspended = bool(value)
+
     @property
     def running(self) -> bool:
         """Whether the render clock is running."""
         return self._timer.isActive()
+
+    @property
+    def last_timestamp(self) -> float | None:
+        """Newest timestamp of the last window this display fetched.
+
+        ``None`` before the first fetch, and ``0.0`` for a stream which has never
+        delivered a sample: the library allocates the timestamps with ``np.zeros`` and a
+        real timestamp is never ``0.0``.
+
+        :type: :class:`float` | None
+
+        Notes
+        -----
+        A rendering fact and not a connection fact: it is what the last fetch returned,
+        it does not move when a fetch returns the same window twice, and it keeps its
+        value when a tick fetched nothing at all. Whether the stream is connected, and
+        what to make of a timestamp which stopped moving, is the consumer's business.
+        """
+        return self._last_ts
 
     # -- channel layout ----------------------------------------------------------------
     def set_channel_layout(self, rows: Sequence[int]) -> None:
@@ -755,9 +811,14 @@ class TraceDisplay(QWidget):
         which is what hiding a channel while frozen used to do. Before the first frame
         exists there is nothing to redraw, so the poll is also what draws a display
         which has never ticked.
+
+        :meth:`_poll` and never :meth:`_render`: this runs from an interaction and not
+        from the clock, thus emitting ``polled`` here would report a render tick which
+        never happened -- and a consumer driving a state machine off that signal would
+        then advance it on a mouse click.
         """
         if self.running or self._frame is None:
-            self._render()
+            self._poll()
         else:
             self._redraw()
 
@@ -773,7 +834,9 @@ class TraceDisplay(QWidget):
         A no-op until the first frame exists. The frame is reindexed onto the current
         picks, as they are what its rows are ordered by; a channel which was hidden when
         the frame was taken has no samples in it at all, and the window is then re-read
-        rather than leaving a row blank, which nothing distinguishes from a defect.
+        rather than leaving a row blank, which nothing distinguishes from a defect. That
+        re-read goes through :meth:`_poll` and not :meth:`_render`, for the reason
+        :meth:`_repaint` records.
         """
         if self._frame is None or not self._rows:
             return
@@ -783,11 +846,29 @@ class TraceDisplay(QWidget):
             return
         position = {acq: index for index, acq in enumerate(picks)}
         if any(acq not in position for acq in self._picks):
-            self._render()
+            self._poll()
             return
         self._draw(data[[position[acq] for acq in self._picks]], relative)
 
     def _render(self) -> None:
+        """Poll the stream, paint the window it returned, and report the tick.
+
+        Notes
+        -----
+        ``polled`` is emitted from here rather than from :meth:`_poll`, so that it fires
+        on **every** path, including the early returns of a suspended display, of a
+        disconnected stream and of an all-hidden layout. It is the only clock a consumer
+        gets out of this widget, and a branch which did not emit would be a consumer
+        which stops being told anything precisely when something went wrong.
+
+        This is the one caller which emits, and it is the render clock's slot: the
+        interaction paths go through :meth:`_repaint` and :meth:`_redraw`, so ``polled``
+        means a tick of the clock and nothing else.
+        """
+        self._poll()
+        self.polled.emit()
+
+    def _poll(self) -> None:
         """Poll the stream, retain the window it returned and paint it.
 
         Notes
@@ -797,8 +878,15 @@ class TraceDisplay(QWidget):
         the scroll offset, thus skipping the fetch would leave a newly banded row blank
         on a stalled stream and turn the repaint at the end of
         :meth:`TraceDisplay.set_channel_layout` into a no-op.
+
+        The two guards are the whole "do not touch the stream" rule of this widget, and
+        every path which reads the buffer goes through here: a suspended display may not
+        read it at all, see :meth:`suspend`, and a disconnected one has nothing to read.
+
+        The un-filled part of a buffer is drawn as ``NaN`` rather than as samples, see
+        the comment in the body: that is what puts a visible gap where no data exists.
         """
-        if not self._stream.connected:
+        if self._suspended or not self._stream.connected:
             return
         if not self._rows:
             # 'get_data(picks=[])' raises *and* logs an error asking for a bug report,
@@ -811,6 +899,34 @@ class TraceDisplay(QWidget):
         data, ts = self._stream.get_data(winsize, picks=self._picks, exclude=())
         # 'exclude' documents the intent only: integer picks bypass it entirely. 'picks'
         # is never 'None', which costs ~140x more to resolve.
+        self._last_ts = float(ts[-1])
+        if ts[0] == 0.0:
+            # 'connect()' allocates the buffer and its timestamps with 'np.zeros', so an
+            # un-filled region reads exactly 0.0 while a real timestamp never does.
+            # Drawn as samples it joins across the outage: 'relative' below sends the
+            # un-filled x far to the left of the view, and 'setClipToView' keeps one
+            # point of it at the row baseline, so the curve enters the plot from the
+            # left edge and rises into the first real sample. The guard is 'False' in
+            # steady state, thus the common path costs one float compare.
+            #
+            # After a reconnection there is no gap *between* two runs of data: the
+            # library allocates a fresh buffer, so the pre-outage samples are gone from
+            # the stream entirely and the plot empties and refills from the right.
+            # Stitching the two sides of an outage is not attempted.
+            if data.dtype.kind != "f":
+                # 'NaN' cannot be stored in an integer array and an integer stream is
+                # drawable, so the assignment below would raise 'ValueError' on every
+                # tick of one. 'data' is a copy -- 'get_data' indexes the buffer -- so
+                # neither this nor the assignment can reach the acquisition buffer,
+                # while 'ts' is a *view* into it and is never written. 'float32' and not
+                # 'float64': the promoted window only ever reaches 'curve.setData',
+                # single-precision on the wire anyway, and the copy is half the size.
+                data = data.astype(np.float32)
+            # A slice and not a boolean mask: the un-filled region is a contiguous
+            # *prefix* by construction -- the buffer is allocated zeroed and every push
+            # rolls it in from the right -- so the count of zeros is its length.
+            # Measured 353 µs against 61 µs at 256 channels, on a 33 ms frame budget.
+            data[:, : np.count_nonzero(ts == 0.0)] = np.nan
         # ponytail: the fetch is the whole layout, not just the ~29 banded rows, thus it
         # is O(n_rows) rather than O(rows drawn) -- measured 836 µs against 72 µs at 256
         # channels, i.e. 2.3% of the 33 ms budget spent copying rows nobody draws. The
@@ -820,8 +936,9 @@ class TraceDisplay(QWidget):
         # The sample times relative to the newest sample, i.e. ending at 0. Retained
         # rather than the absolute ones, which 'get_data' returns as a *view* into the
         # buffer the acquisition thread keeps rolling, and rather than the mapped x,
-        # which a change of the window width makes stale.
-        relative = ts - float(ts[-1])
+        # which a change of the window width makes stale. The newest sample is the one
+        # already read out above, rather than converted a second time.
+        relative = ts - self._last_ts
         self._frame = (list(self._picks), data, relative)
         self._draw(data, relative)
 

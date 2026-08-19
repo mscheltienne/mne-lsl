@@ -24,16 +24,38 @@ import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QCoreApplication, QObject, QThread, Signal
+from qtpy.QtCore import (
+    QCoreApplication,
+    QObject,
+    QRunnable,
+    QThread,
+    QThreadPool,
+    Signal,
+)
 
 from ...utils.logs import logger
-from ._source import connect_stream, probe_channels, resolve_descriptors
+from ._identity import signature_mismatch
+from ._source import (
+    connect_stream,
+    probe_channels,
+    reconnect_stream,
+    resolve_descriptors,
+    stream_signature,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from ...stream import BaseStream
-    from ._identity import StreamDescriptor
+    from ._identity import StreamDescriptor, StreamSignature
+
+# Outcome of one reconnection attempt, as the worker reports it to the document. Bare
+# strings, so that they cross a 'Signal(str, str)' unchanged. Prefixed, and never a bare
+# 'live': the document's own 'LIVE' state constant is the string 'live' and it imports
+# both, so 'outcome == LIVE' reads as correct while comparing the wrong two constants.
+RESUME_LIVE = "resume-live"
+RESUME_RETRY = "resume-retry"
+RESUME_MISMATCH = "resume-mismatch"
 
 # Bounded wait on a worker at shutdown, in milliseconds. A blocking liblsl call cannot
 # be interrupted, thus the wait has to cover the longest one which can be in flight, and
@@ -129,7 +151,32 @@ def _stop_thread(thread: QThread, kind: str) -> None:
         )
 
 
-def _release(stream: BaseStream) -> None:
+def wait_for_reconnects() -> None:
+    """Wait for the reconnection tasks still on the global thread pool; bounded.
+
+    Notes
+    -----
+    The counterpart, at shutdown, of the ``stop()`` each worker owner offers: a
+    reconnection is a :class:`~qtpy.QtCore.QRunnable` on the global pool, so there is no
+    thread of its own to stop and nothing in a window's teardown reaches it. Without
+    this the pool is drained by its own destructor instead -- measured, ~3.2 s of a
+    process which had already returned from ``closeEvent``, with the emitter's C++
+    object already destroyed, so the outcome is delivered to nobody and a stream the
+    task connected stays open with its acquisition thread for the life of the process.
+
+    Bounded by :data:`_STOP_TIMEOUT_MS` for the reason :func:`_stop_thread` records: a
+    blocking liblsl call cannot be interrupted, and one connection is the longest one
+    which can be in flight.
+
+    ponytail: the *global* pool, so this also waits out unrelated work an embedder's
+    host application submitted to it. The upgrade is a pool dedicated to reconnections,
+    which would additionally stop a saturated global pool from starving a queued
+    document; nothing else in-process uses it today.
+    """
+    QThreadPool.globalInstance().waitForDone(_STOP_TIMEOUT_MS)
+
+
+def release_stream(stream: BaseStream) -> None:
     """Disconnect a stream nobody will ever receive.
 
     Parameters
@@ -144,6 +191,9 @@ def _release(stream: BaseStream) -> None:
     is not an option -- a dropped connected stream leaks a live inlet *and* its
     acquisition thread for the life of the process, and it is the one silent failure
     mode of this module.
+
+    Public because a reconnection outcome may reach a document which has been torn down
+    in the meantime, and that document then has the same stream to release.
     """
     try:
         stream.disconnect()
@@ -388,7 +438,7 @@ class _ConnectorWorker(QObject):
             if self.generation != generation:
                 # cancelled *during* the connection, which takes about a second: the
                 # stream is live and nobody is listening for it any more.
-                _release(stream)
+                release_stream(stream)
                 return
             self.connected.emit(generation, descriptor, stream)
 
@@ -488,7 +538,7 @@ class Connector(QObject):
             # The batch was replaced or stopped after the worker's own check and before
             # this slot ran; the worker could not see that. Nobody will hear about this
             # stream, thus it must be released here or it leaks.
-            _release(stream)
+            release_stream(stream)
             return
         self.connected.emit(descriptor, stream)
 
@@ -573,12 +623,14 @@ class _ProbeWorker(QObject):
         It does not remove the race against other threads, and cannot: whichever of two
         overlapping blocks leaves last restores the list it captured, so a
         ``catch_warnings`` entered elsewhere while a batch is in flight can resurrect a
-        filter that thread had removed, or drop one it had installed. Nothing in the
-        viewer enters one on the GUI thread today. The alternatives are worse -- a
-        permanent filter installed at import is a module-level side effect, which this
-        package does not allow, and it would silence the notice for an embedder's own
-        calls -- so the real fix belongs upstream, in the reader which warns even when
-        its de-duplication produced usable names.
+        filter that thread had removed, or drop one it had installed. The GUI thread
+        does enter one, measured: pyqtgraph's ``boundingRect``/``dataBounds`` enter
+        ``catch_warnings`` on the **render path**, 48--50 times per paint, so a document
+        drawing at 30 Hz overlaps any batch which is in flight. The alternatives are
+        nonetheless worse -- a permanent filter installed at import is a module-level
+        side effect, which this package does not allow, and it would silence the notice
+        for an embedder's own calls -- so the real fix belongs upstream, in the reader
+        which warns even when its de-duplication produced usable names.
 
         The suppression covers only the outer notice. The inner duplicate-name warning
         still reaches the reader, which catches it itself and falls back to channel
@@ -723,3 +775,157 @@ class Prober(QObject):
             "Could not probe the stream %s: %s", descriptor.identity.as_tuple(), message
         )
         self.failed.emit(descriptor, message)
+
+
+class _ReconnectSignals(QObject):
+    """Emitter carrying the outcome of one reconnection back to the GUI thread.
+
+    Attributes
+    ----------
+    finished : Signal
+        Emitted once with ``(outcome, detail)``, where ``outcome`` is one of
+        :data:`RESUME_LIVE`, :data:`RESUME_MISMATCH` and :data:`RESUME_RETRY`.
+
+    Notes
+    -----
+    A separate object rather than the document which asked for the reconnection: a
+    document is a dock widget whose C++ object the docking framework may already have
+    destroyed, and emitting on a destroyed object from a worker thread raises there.
+
+    What makes a *late* outcome safe is not this object being collected with its owner:
+    it is not: :class:`_ReconnectTask` holds a strong reference to it for the whole of
+    ``run()``, which is precisely the window in question. It is that reference, plus Qt
+    severing a connection whose receiver was destroyed, so the emission reaches nobody
+    instead of a dangling document. The emitter's own C++ object can still go away
+    first, at shutdown, which is why :meth:`_ReconnectTask._emit` treats a dead emitter
+    as a stream to release rather than as an error.
+    """
+
+    finished = Signal(str, str)
+
+
+class _ReconnectTask(QRunnable):
+    """Reconnect one stream in place and evaluate whether it may be resumed.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        The stream to reconnect, connected or not.
+    expected : StreamSignature
+        Signature recorded while the document was live.
+    signals : _ReconnectSignals
+        Emitter to report the outcome through.
+
+    Notes
+    -----
+    Composition rather than ``class _ReconnectTask(QObject, QRunnable)``: multiple
+    inheritance from both is a documented PySide6 hazard.
+
+    The match is evaluated here, on the worker, rather than by the document: refusing a
+    stream means disconnecting it, which takes about half a second, and doing that on
+    the GUI thread is a visible freeze. The document still owns the state machine --
+    this computes a fact and hands over a reason string.
+    """
+
+    def __init__(
+        self,
+        stream: BaseStream,
+        expected: StreamSignature,
+        signals: _ReconnectSignals,
+    ) -> None:
+        super().__init__()
+        self._stream = stream
+        self._expected = expected
+        self._signals = signals
+
+    def run(self) -> None:
+        """Reconnect, compare, and report exactly one outcome."""
+        try:
+            reconnect_stream(self._stream)
+        except Exception as error:
+            # Deliberately broad: an absent identity, a refused inlet and a stream which
+            # came back as a string stream are all "not back yet", and an exception
+            # escaping a runnable is invisible beyond a log line.
+            self._emit(RESUME_RETRY, str(error))
+            return
+        try:
+            reason = signature_mismatch(self._expected, stream_signature(self._stream))
+        except Exception as error:  # a stream which was lost again mid-comparison
+            release_stream(self._stream)
+            self._emit(RESUME_RETRY, str(error))
+            return
+        if reason is None:
+            self._emit(RESUME_LIVE, "")
+            return
+        # refused: nobody will draw it, so it must not stay open
+        release_stream(self._stream)
+        self._emit(RESUME_MISMATCH, reason)
+
+    def _emit(self, outcome: str, detail: str) -> None:
+        """Report one outcome, releasing the stream if nobody can hear it.
+
+        Parameters
+        ----------
+        outcome : str
+            One of :data:`RESUME_LIVE`, :data:`RESUME_MISMATCH`, :data:`RESUME_RETRY`.
+        detail : str
+            The refusal reason, or the text of the exception which failed the attempt.
+
+        Notes
+        -----
+        The emitter's C++ object can be destroyed while this task is still running: a
+        shutdown which tears the window down and returns leaves this pool thread inside
+        a blocking call, and the emission then raises ``RuntimeError: wrapped C/C++
+        object ... has been deleted`` -- on a pool thread, outside every ``try``, which
+        loses a stream this task had just connected, and its acquisition thread with it.
+        This is the last chance to release that stream, so the failure is handled here
+        rather than left to escape ``run()``, where nothing but a log line would see it.
+        """
+        try:
+            self._signals.finished.emit(outcome, detail)
+        except RuntimeError as error:  # the emitter went with the shutdown
+            logger.warning("Could not report a reconnection outcome: %s", error)
+            if outcome == RESUME_LIVE:
+                release_stream(self._stream)
+
+
+def submit_reconnect(
+    stream: BaseStream, expected: StreamSignature, on_finished: Callable
+) -> _ReconnectSignals:
+    """Reconnect ``stream`` on the global thread pool and report the outcome.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        The stream to reconnect, connected or not.
+    expected : StreamSignature
+        Signature recorded while the document was live.
+    on_finished : Callable
+        Slot called once with ``(outcome, detail)``, on the GUI thread.
+
+    Returns
+    -------
+    signals : _ReconnectSignals
+        Emitter whose ``finished`` signal ``on_finished`` is connected to. Returned so
+        that a caller can hold it as the handle of an attempt in flight; it is not what
+        the connection is made through.
+
+    Notes
+    -----
+    ``on_finished`` is an argument rather than something the caller connects to the
+    returned emitter, because Qt resolves the receivers of a signal at emit time: a
+    reconnection which fails fast -- an identity absent from the network raises as soon
+    as the resolution times out, and the pool may run the task before this function has
+    even returned -- would emit into no receiver at all and the attempt would then hang
+    forever with nothing in flight.
+
+    A :class:`~qtpy.QtCore.QRunnable` on the global pool rather than a fourth
+    thread-and-worker pair: a reconnection is per-document and one-shot, so a facade
+    owning a :class:`~qtpy.QtCore.QThread` would mean one idle thread per open document
+    plus a ``stop()`` to wire into every teardown path, and destroying a running
+    ``QThread`` aborts the process.
+    """
+    signals = _ReconnectSignals()
+    signals.finished.connect(on_finished)  # before 'start', see the note above
+    QThreadPool.globalInstance().start(_ReconnectTask(stream, expected, signals))
+    return signals

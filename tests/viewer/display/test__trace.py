@@ -75,13 +75,17 @@ def _fake_get_data(
     same window is not the one the render used. Encoding the identity in the samples
     instead makes 'data[row]' checkable exactly, and the picks are still the ones the
     real code computed.
+
+    The timestamps start at 1, not at 0: a 0.0 timestamp is what the display reads as an
+    un-filled buffer, so starting at 0 would make every fetch of this stand-in NaN its
+    own first sample and every identity assertion above fail on that one column.
     """
 
     def _fetch(winsize=None, picks=None, exclude="bads"):
         data = np.repeat(
             np.asarray(picks, dtype=np.float64)[:, None], n_samples, axis=1
         )
-        return data, np.arange(n_samples, dtype=np.float64) / 100.0
+        return data, np.arange(1, n_samples + 1, dtype=np.float64) / 100.0
 
     monkeypatch.setattr(display._stream, "get_data", _fetch)
 
@@ -376,13 +380,18 @@ def test_set_channel_layout_renders_immediately(
 
     Without the render at the end of 'set_channel_layout', a curve would keep the old
     channel's samples under the new channel's pen for up to one render period.
+
+    'equal_nan=True' is mandatory here: fewer samples are pushed than the window holds,
+    so the un-filled prefix is drawn as NaN, and 'np.array_equal' is 'False' for two
+    *identical* NaN-bearing arrays. Without it this negative assertion holds whatever
+    the display does, i.e. it becomes a test which cannot fail.
     """
     push(50)
     display._render()
     before = display._assigned[0].getData()[1].copy()
     display.set_channel_layout(list(reversed(range(display.n_channels))))
     after = display._assigned[0].getData()[1]  # no explicit '_render()' in between
-    assert not np.array_equal(before, after)
+    assert not np.array_equal(before, after, equal_nan=True)
 
 
 def test_color_invariance_under_layout(display: TraceDisplay) -> None:
@@ -708,6 +717,11 @@ def test_stopped_clock_repaints_the_same_window(
 
     The whole point of the retained window: a poll would advance the viewport to the
     newest samples, so a frozen document would jump forward on any interaction at all.
+
+    'equal_nan=True' is mandatory on both comparisons: fewer samples are pushed than the
+    window holds, so the un-filled prefix is drawn as NaN, and 'np.array_equal' is
+    'False' for two *identical* NaN-bearing arrays -- which fails the positive assertion
+    and makes the negative one hold whatever the display does.
     """
     push(50)
     display._render()
@@ -720,13 +734,13 @@ def test_stopped_clock_repaints_the_same_window(
     display.controls.set_rows(4)
     display.controls.set_window(1.0)
     assert calls == []
-    assert np.array_equal(display._assigned[0].getData()[1], before)
+    assert np.array_equal(display._assigned[0].getData()[1], before, equal_nan=True)
     # a hide is a subset of the retained picks, thus it too repaints without a poll --
     # and the channel which moved onto row 0 draws its own samples out of that window.
     display.set_channel_layout(list(range(1, display.n_channels)))
     assert calls == []
     assert display._rows[0] != acq
-    assert not np.array_equal(display._assigned[0].getData()[1], before)
+    assert not np.array_equal(display._assigned[0].getData()[1], before, equal_nan=True)
 
 
 def test_disconnected_stream_render_is_noop(display: TraceDisplay) -> None:
@@ -774,6 +788,118 @@ def test_render_clock_repaints_and_stops(
     settled = len(calls)
     qtbot.wait(_RENDER_MS * 4)
     assert len(calls) == settled
+
+
+# -- the un-filled window, and the polling report --------------------------------------
+def test_unfilled_window_is_drawn_as_nan(
+    display: TraceDisplay, push: Callable[..., None]
+) -> None:
+    """Test that the un-filled part of the buffer is NaN and the real samples are not.
+
+    'connect()' allocates the timestamps with 'np.zeros', so an un-filled region reads
+    exactly 0.0 while a real timestamp never does. Drawn as samples it joins across the
+    outage instead of leaving a gap. Kills deleting the rule, kills NaN-ing the filled
+    samples too, and kills matching on anything other than an exact 0.0.
+    """
+    push(50)
+    display._render()
+    _, data, _ = display._frame
+    _, ts = display._stream.get_data(display.controls.state["window"], picks=[0])
+    unfilled = ts == 0.0
+    assert unfilled.sum() == 150  # 2 s at 100 Hz, 50 samples pushed
+    assert np.all(np.isnan(data[:, unfilled]))
+    assert not np.any(np.isnan(data[:, ~unfilled]))
+
+
+def test_unfilled_window_of_an_integer_stream(
+    lsl_stream: Callable[..., tuple[StreamLSL, Callable[..., None]]],
+    make_display: Callable[..., TraceDisplay],
+) -> None:
+    """Test that an integer stream renders and gets a float frame with NaNs in it.
+
+    'NaN' cannot be stored in an integer array, so without the promotion the assignment
+    raises 'ValueError' on every tick of an int8/16/32/64 stream -- inside a Qt slot, at
+    30 Hz. Kills dropping the dtype guard.
+    """
+    stream, push = lsl_stream(dtype="int32")
+    assert np.dtype(stream.dtype) == np.int32
+    display = make_display(stream)
+    push(50)
+    display._render()  # would raise 'ValueError' without the promotion
+    _, data, _ = display._frame
+    assert data.dtype.kind == "f"
+    assert np.isnan(data).any()
+    assert not np.isnan(data[:, -1]).any()  # the real samples survived the promotion
+
+
+def test_unfilled_zeros_are_not_a_rising_stim_edge(
+    display: TraceDisplay, push: Callable[..., None]
+) -> None:
+    """Test that the un-filled buffer never produces an event overlay.
+
+    The edge rule is an exact ``== 0`` to non-zero transition, and an un-filled buffer
+    reads exactly 0.0 -- so a stim sample which is high in the *first* pushed chunk sits
+    immediately after the un-filled region and used to be reported as a rising edge,
+    with a line and a value label, for a transition which never happened on the wire.
+    The NaN rule is what removes it: ``NaN == 0`` is 'False'.
+
+    The two shipped NaN tests cannot see this, because the fixture pushes zeros into the
+    stim channel and they assert on the frame rather than on the overlays. Both edges
+    live in one window here, so the same fetch shows the false one suppressed and the
+    real one kept -- an assertion which cannot pass by drawing nothing at all.
+    """
+    push(50, stim_at=0)  # high on the very first sample which exists
+    display._render()
+    _, data, _ = display._frame
+    stim = data[display._event_pos[0]]
+    first = int(np.flatnonzero(stim > 0)[0])
+    assert np.isnan(stim[first - 1])  # the un-filled sample is not a zero
+    assert _visible_events(display) == 0
+
+    push(50, stim_at=10)  # a real 0 -> 3 transition, inside the filled region
+    display._render()
+    assert _visible_events(display) == 1
+
+
+def test_polled_is_emitted_on_every_branch(
+    display: TraceDisplay, push: Callable[..., None]
+) -> None:
+    """Test that a tick reports itself whether or not it drew anything.
+
+    'polled' is the only clock a consumer gets out of this widget, so a branch which
+    does not emit is a consumer which stops being told anything precisely when something
+    went wrong. Kills moving the emit inside any branch of '_render'.
+    """
+    ticks: list[int] = []
+    display.polled.connect(lambda: ticks.append(1))
+    push(50)
+    display._render()  # connected and drawing
+    assert len(ticks) == 1
+    display.set_channel_layout([])  # all hidden: the fetch is skipped
+    ticks.clear()
+    display._render()
+    assert len(ticks) == 1
+    display._stream.disconnect()
+    ticks.clear()
+    display._render()
+    assert len(ticks) == 1
+
+
+def test_last_timestamp(display: TraceDisplay, push: Callable[..., None]) -> None:
+    """Test the newest timestamp of the last fetched window, over its three states.
+
+    Kills reading it off 'relative', which ends at 0.0 by construction, and kills
+    setting it after the trim, which would report 'nan' on a partially filled buffer.
+    """
+    assert display.last_timestamp is None  # nothing fetched yet
+    display._render()
+    assert display.last_timestamp == 0.0  # nothing pushed: the buffer is all zeros
+    push(50)
+    display._render()
+    first = display.last_timestamp
+    assert first > 0.0
+    display._render()  # a re-poll with no new samples must not move it
+    assert display.last_timestamp == first
 
 
 # -- amplitude transform ---------------------------------------------------------------

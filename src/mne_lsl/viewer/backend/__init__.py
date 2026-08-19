@@ -19,13 +19,31 @@ from ._config import (
     rename_configuration,
     save_configuration,
 )
-from ._discovery import Connector, Discovery, Prober
-from ._identity import StreamDescriptor, StreamIdentity
+from ._discovery import (
+    RESUME_LIVE,
+    RESUME_MISMATCH,
+    RESUME_RETRY,
+    Connector,
+    Discovery,
+    Prober,
+    release_stream,
+    submit_reconnect,
+    wait_for_reconnects,
+)
+from ._identity import (
+    StreamDescriptor,
+    StreamIdentity,
+    StreamSignature,
+    signature_mismatch,
+)
 from ._source import (
     connect_stream,
     create_stream,
     derive_bufsize,
+    disconnect_text,
     probe_channels,
+    reconnect_stream,
     resolve_descriptors,
     stream_identity,
+    stream_signature,
 )

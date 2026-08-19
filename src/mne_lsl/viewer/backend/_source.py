@@ -21,8 +21,9 @@ from math import ceil, isfinite
 from typing import TYPE_CHECKING
 
 from ...lsl import StreamInlet, resolve_streams
+from ...lsl._utils import LostError
 from ...stream import StreamLSL
-from ._identity import StreamDescriptor, StreamIdentity
+from ._identity import StreamDescriptor, StreamIdentity, StreamSignature
 
 if TYPE_CHECKING:
     from ...lsl.stream_info import _BaseStreamInfo
@@ -179,10 +180,12 @@ def create_stream(descriptor: StreamDescriptor, bufsize: float) -> BaseStream:
     The ``bufsize`` check is this module's, not the library's.
     :meth:`~mne_lsl.stream.StreamLSL.connect` validates ``bufsize`` against
     ``sfreq == 0`` only *after* it has created and opened the inlet, and it does not
-    reset the stream on the way out: the :class:`ValueError` leaves an object whose
-    :attr:`~mne_lsl.stream.BaseStream.connected` property and
-    :meth:`~mne_lsl.stream.BaseStream.disconnect` method both raise, so not even
-    ``__del__`` can close the inlet it just opened. A descriptor already carries
+    reset the stream on the way out: the :class:`ValueError` leaves an object holding a
+    live, subscribed inlet while reading as disconnected. It is now recoverable --
+    :attr:`~mne_lsl.stream.BaseStream.connected` reads a partial state as ``False``,
+    :meth:`~mne_lsl.stream.BaseStream.disconnect` is idempotent and destroys the inlet
+    unconditionally, and ``__del__`` therefore closes it -- but only for a caller who
+    thinks to disconnect an object whose connection raised. A descriptor already carries
     :attr:`~mne_lsl.viewer.backend.StreamDescriptor.sfreq`, thus the viewer refuses the
     value up front. That matters because
     :meth:`~mne_lsl.viewer.backend.Connector.open` passes one ``bufsize`` to a batch
@@ -229,18 +232,18 @@ def connect_stream(descriptor: StreamDescriptor, bufsize: float) -> BaseStream:
 
     Notes
     -----
-    This is the single place in the viewer where ``recover`` is written, and it is
-    written as ``False``. With ``recover=True`` liblsl re-resolves a lost stream forever
-    at 500 ms intervals, matching on the identity, the channel count and the format but
-    not on the sampling rate, and Python observes nothing at all -- no error, no state
-    change, just an indefinitely empty pull. The per-document disconnection notice the
-    viewer must show cannot exist on top of that, and neither can the check that the
-    stream which came back is the stream which left. The library default stays ``True``,
-    as flipping it would change the behaviour of every existing consumer, so the viewer
-    passes ``False`` explicitly.
+    This and :func:`reconnect_stream` are the two places in the viewer where ``recover``
+    is written, and both write ``False``. With ``recover=True`` liblsl re-resolves a
+    lost stream forever at 500 ms intervals, matching on the identity, the channel count
+    and the format but not on the sampling rate, and Python observes nothing at all --
+    no error, no state change, just an indefinitely empty pull. The per-document
+    disconnection notice the viewer must show cannot exist on top of that, and neither
+    can the check that the stream which came back is the stream which left. The library
+    default stays ``True``, as flipping it would change the behaviour of every existing
+    consumer, so the viewer passes ``False`` explicitly.
 
-    It also exists so that the discovery transport needs no LSL knowledge: ``recover``
-    is a :class:`~mne_lsl.stream.StreamLSL` keyword absent from
+    Both live in this module so that the discovery transport needs no LSL knowledge:
+    ``recover`` is a :class:`~mne_lsl.stream.StreamLSL` keyword absent from
     :meth:`~mne_lsl.stream.BaseStream.connect`, thus passing it from a
     ``BaseStream``-typed call site would break on the first non-LSL protocol.
 
@@ -362,3 +365,99 @@ def stream_identity(stream: BaseStream) -> StreamIdentity:
     return StreamIdentity(
         name=stream.name, stype=stream.stype, source_id=stream.source_id
     )
+
+
+def reconnect_stream(stream: BaseStream) -> None:
+    """Reconnect an existing stream in place, blocking until it is ready.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        The stream to reconnect, connected or not.
+
+    Raises
+    ------
+    RuntimeError
+        If the identity no longer matches exactly one stream on the network.
+
+    Notes
+    -----
+    The identity triple, the buffer size and every other constructor argument survive
+    the reset the library performs on a disconnection, so the same object reconnects to
+    the same identity with an identical buffer. What does *not* survive is the buffer
+    content: a reconnection allocates a fresh one, so the samples acquired before the
+    outage are gone from the stream and the display refills from the right edge.
+    Stitching the two sides of an outage is not attempted.
+
+    Both halves of the body are load-bearing. The disconnection first is required
+    because :meth:`~mne_lsl.stream.BaseStream.connect` warns and returns unchanged on an
+    already connected stream: without it a source which recovered on its own would
+    silently never be reconnected, and a warning is an error under the test suite.
+    ``recover=False`` is required for the reason :func:`connect_stream` records.
+    """
+    if stream.connected:
+        stream.disconnect()
+    stream.connect(recover=False)
+
+
+def stream_signature(stream: BaseStream) -> StreamSignature:
+    """Return the resume signature of a connected stream.
+
+    Parameters
+    ----------
+    stream : BaseStream
+        A connected stream.
+
+    Returns
+    -------
+    signature : StreamSignature
+        Everything :func:`~mne_lsl.viewer.backend.signature_mismatch` compares.
+
+    Raises
+    ------
+    RuntimeError
+        If the stream is not connected, raised by the property reads.
+    TypeError
+        If the stream is not an LSL stream, i.e. if it carries no LSL identity.
+
+    Notes
+    -----
+    The channel names come from :attr:`~mne_lsl.stream.BaseStream.info`, never from
+    :meth:`~mne_lsl.lsl.StreamInfo.get_channel_info`: the two return the same
+    de-duplicated list, but the latter re-emits the duplicate-name warning of the
+    initial connection every time it is called, and costs a full XML parse to do it.
+    """
+    return StreamSignature(
+        identity=stream_identity(stream),
+        sfreq=float(stream.info["sfreq"]),
+        dtype=str(stream.dtype),
+        ch_names=tuple(stream.info["ch_names"]),
+    )
+
+
+def disconnect_text(reason: BaseException | None) -> str:
+    """Return the one-line reason a document shows for a disconnection.
+
+    Parameters
+    ----------
+    reason : BaseException | None
+        :attr:`~mne_lsl.stream.BaseStream.disconnect_reason` of the stream, ``None``
+        when the stream was disconnected cleanly rather than by its acquisition thread.
+
+    Returns
+    -------
+    text : str
+        A short reason, without trailing punctuation, so that a caller may append to it.
+
+    Notes
+    -----
+    This is the only place in the viewer which names ``LostError``, which is why it
+    lives in this module: a lost source and a stream someone else disconnected are the
+    same state with different wording, and the document must not import from
+    :mod:`mne_lsl.lsl` to tell them apart.
+    """
+    if isinstance(reason, LostError):
+        return "Stream lost"
+    if reason is None:
+        return "Stream disconnected"
+    return f"Stream error: {type(reason).__name__}"
