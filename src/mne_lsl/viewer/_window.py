@@ -21,7 +21,7 @@ from qtpy.QtWidgets import (
 from .._version import __version__
 from ..utils.logs import logger
 from ._bootstrap import configure_docking, import_ads
-from ._document import StreamDocument
+from ._document import LIVE, StreamDocument
 from ._launcher import EmptyStatePage, progress_text
 from .backend import (
     STATE_LOADING,
@@ -39,9 +39,11 @@ from .backend import (
     identity_text,
     list_configurations,
     missing_channels,
+    release_stream,
     rename_configuration,
     save_configuration,
     stream_identity,
+    wait_for_reconnects,
 )
 from .display import WINDOW_RANGE
 from .theme import (
@@ -193,27 +195,6 @@ def _elide(text: str) -> str:
     if len(text) <= _SOURCE_ID_CHARS:
         return text
     return f"{text[:_SOURCE_ID_CHARS]}…"
-
-
-def _release_stream(stream: BaseStream) -> None:
-    """Disconnect a stream nobody will ever receive.
-
-    Parameters
-    ----------
-    stream : BaseStream
-        A connected stream whose document was never built, or was already torn down.
-
-    Notes
-    -----
-    Logged and swallowed, and never skipped: the connector transfers stream ownership
-    with its signal, so dropping one leaks a live inlet *and* its acquisition thread for
-    the life of the process, which is the one silent failure mode of the load path.
-    """
-    try:
-        if stream.connected:
-            stream.disconnect()
-    except Exception as error:  # deliberately broad, see the note above
-        logger.warning("Could not release a stream of a cancelled load: %s", error)
 
 
 def _slot_index(name: str) -> int | None:
@@ -871,8 +852,11 @@ class ViewerWindow(QMainWindow):
         """Open a document for an already connected stream, without owning it.
 
         This is the :meth:`~mne_lsl.stream.BaseStream.plot` path: the stream is
-        borrowed, thus closing the document never disconnects it. The window provides
-        its dock manager to the document it builds.
+        borrowed, thus closing the document never disconnects it, and the viewer never
+        reconnects it on its own either -- a reconnection replaces the inlet and the
+        buffer, which drops the filters, the callbacks and the acquisition delay its
+        owner set. A borrowed document whose source goes away therefore offers Retry and
+        waits for it. The window provides its dock manager to the document it builds.
 
         Parameters
         ----------
@@ -1190,10 +1174,13 @@ class ViewerWindow(QMainWindow):
         self._source = name
         self.reload_configurations()
         message = f"Saved '{name}'."
-        down = [doc for doc in self._documents if not doc.stream.connected]
+        # the document's own state and not 'stream.connected': a stalled or refused
+        # document *is* connected and would go unreported, while a mismatched one would
+        # be described as merely disconnected.
+        down = [doc for doc in self._documents if doc.state != LIVE]
         if down:
             plural = "" if len(down) == 1 else "s"
-            message += f" {len(down)} stream{plural} currently disconnected."
+            message += f" {len(down)} stream{plural} currently interrupted."
         self.statusBar().showMessage(message, 6000)
         self._update_save_actions()
 
@@ -1349,7 +1336,7 @@ class ViewerWindow(QMainWindow):
                 "for any more.",
                 identity.as_tuple(),
             )
-            _release_stream(stream)
+            release_stream(stream)
             return
         attempt.pending.pop(identity)
         attempt.streams[identity] = stream
@@ -1649,7 +1636,7 @@ class ViewerWindow(QMainWindow):
             else:
                 doc.deleteLater()
         for stream in reversed(tuple(attempt.streams.values())):
-            _release_stream(stream)
+            release_stream(stream)
         self._dock_area = None
         # 'refresh' republishes, which is what re-enables Refresh and Open -- and why
         # '_loading' has to be cleared before it rather than after.
@@ -1889,7 +1876,7 @@ class ViewerWindow(QMainWindow):
 
         Notes
         -----
-        All four stops are mandatory. Closing the window does not close the dock widgets
+        All five waits are mandatory. Closing the window does not close the dock widgets
         by itself -- measured: no ``closed`` is emitted and every render clock keeps
         ticking -- and the ``aboutToQuit`` fallback each worker owner installs is only
         emitted when a real event loop exits, i.e. never on the path which merely shows
@@ -1898,7 +1885,14 @@ class ViewerWindow(QMainWindow):
         The loader and the prober are the two which are easy to forget, because both
         start their thread lazily: a thread which is running when its ``QThread`` is
         destroyed makes Qt abort the process, and only sometimes, so a missing stop
-        lands as flake.
+        lands as flake. The reconnections are the third, for the opposite reason: they
+        own no thread to stop, so there is nothing in this list to forget -- and without
+        :func:`~mne_lsl.viewer.backend.wait_for_reconnects` the process blocks in the
+        pool's destructor instead, after this method has returned, with every document
+        already gone and the outcome delivered to nobody.
+
+        The documents are closed *before* that wait, so that a reconnection which lands
+        during it finds a torn-down document and releases the stream it just connected.
 
         A load in flight owns streams no document holds yet, and stopping the loader
         only cancels what has not been connected: without releasing them here, every
@@ -1910,11 +1904,12 @@ class ViewerWindow(QMainWindow):
         if self._loading is not None:
             attempt, self._loading = self._loading, None
             for stream in reversed(tuple(attempt.streams.values())):
-                _release_stream(stream)
+                release_stream(stream)
         self.close_all_documents()
         self._discovery.stop()
         self._connector.stop()
         self._loader.stop()
         self._prober.stop()
+        wait_for_reconnects()
         follow_theme(self, self._on_theme_changed, False)
         super().closeEvent(event)

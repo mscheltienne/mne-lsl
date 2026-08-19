@@ -11,7 +11,7 @@ from qtpy.QtWidgets import QInputDialog, QMessageBox
 from mne_lsl.stream import StreamLSL
 from mne_lsl.viewer import _window
 from mne_lsl.viewer._bootstrap import import_ads
-from mne_lsl.viewer._document import StreamDocument
+from mne_lsl.viewer._document import LIVE, StreamDocument
 from mne_lsl.viewer._launcher import PROGRESS_TEXT
 from mne_lsl.viewer.backend import (
     STATE_AVAILABLE,
@@ -1314,16 +1314,24 @@ def test_save_reports_a_disconnected_stream(
     today: the identity and every setting are still known, and a configuration describes
     a *desired* workspace. Dropping the notice instead saves silently and leaves the
     user with no way to tell that a stream was already gone.
+
+    The count is read off the document's *state* and not off 'stream.connected', which
+    is why the tick is here: the state moves on a render tick, and the 30 Hz clock has
+    delivered thousands of them by the time a user reaches the menu. Reading the stream
+    instead would report nothing at all for a stalled document -- which is connected --
+    and would call a refused one merely disconnected.
     """
     _open(window, stream)
     stream.disconnect()
+    window.documents[0].trace._render()  # one tick, as the render clock provides
+    assert window.documents[0].state != LIVE
     _stub_text(monkeypatch, "mine")
     window.save_configuration_as()
     (cfg,) = list_configurations()
     assert cfg.streams
     message = window.statusBar().currentMessage()
     assert "Saved 'mine'." in message
-    assert "1 stream currently disconnected." in message
+    assert "1 stream currently interrupted." in message
 
 
 # -- loading ---------------------------------------------------------------------------

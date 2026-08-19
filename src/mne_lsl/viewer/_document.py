@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
@@ -19,9 +20,18 @@ from qtpy.QtWidgets import (
 
 from ..utils.logs import logger
 from ._bootstrap import import_ads
+from .backend import (
+    RESUME_LIVE,
+    RESUME_MISMATCH,
+    StreamSignature,
+    disconnect_text,
+    release_stream,
+    submit_reconnect,
+)
 from .controller import ChannelModel, ChannelsPage, unit_choices, unit_label
 from .display import TraceDisplay
 from .theme import _ICON_PX, icon, theme_controller, tokens
+from .widgets import Banner
 
 if TYPE_CHECKING:
     from typing import Any
@@ -34,6 +44,29 @@ ads = import_ads()
 # Initial widths of the controller panel and of the trace display, in pixels: the panel
 # opens a little wider than its own minimum and the display takes the rest.
 _PANEL_SIZES = (300, 900)
+
+# The connection states of a document. Bare names rather than a 'STATE_*' family:
+# 'backend/_config.py' already exports 'STATE_AVAILABLE' / 'STATE_CHECKING' / ... for a
+# state of a saved *configuration* card, and a second 'STATE_*' family one import away
+# is how a reader ends up reading the wrong one.
+LIVE = "live"
+INTERRUPTED = "interrupted"
+MISMATCHED = "mismatched"
+CLOSED = "closed"
+
+# ponytail: one flat timeout, in seconds, for every stream. A source pushing one chunk a
+# second and one pushing at 1 kHz are held to the same 5 s of silence, so a slow but
+# healthy source is called stalled while a fast one is called stalled far too late. The
+# upgrade is to derive it from the observed inter-chunk interval, which needs a running
+# estimate the detector does not have today.
+T_STALL = 5.0
+# How long a resumed document must keep delivering before its retry ladder is reset, in
+# seconds. Below this, a loss is a flap and the ladder keeps climbing.
+T_STABLE = 5.0
+# Delay before each reconnection attempt, in seconds, held at the last value. Paced so
+# that a source which is down for a while is not re-resolved 30 times a second; the
+# resolution inside one attempt already blocks for a second of its own.
+_BACKOFF = (1.0, 2.0, 5.0, 10.0)
 
 
 class StreamDocument(ads.CDockWidget):
@@ -58,7 +91,11 @@ class StreamDocument(ads.CDockWidget):
     owns_stream : bool
         If ``True``, :meth:`teardown` disconnects the stream. A borrowed stream, i.e.
         one provided to :class:`~mne_lsl.viewer.Viewer` by
-        :meth:`~mne_lsl.stream.BaseStream.plot`, is never disconnected by the viewer.
+        :meth:`~mne_lsl.stream.BaseStream.plot`, is never disconnected on teardown, and
+        is reconnected only when the operator asks for it through
+        :meth:`StreamDocument.retry`: a reconnection replaces the object's inlet and
+        buffer, which drops the filters, the callbacks and the acquisition delay its
+        owner set on it.
     parent : QWidget | None
         Parent widget.
 
@@ -90,7 +127,8 @@ class StreamDocument(ads.CDockWidget):
         # an event source already, while 'adopt_stream' -- the 'BaseStream.plot()' path
         # -- would otherwise open a document over a stream with no continuous signal,
         # whose time axis means nothing and whose window 'get_data' reads as a count.
-        if float(stream.info["sfreq"]) == 0:
+        sfreq = float(stream.info["sfreq"])
+        if sfreq == 0:
             raise ValueError(
                 f"The stream {identity.as_tuple()} is irregularly sampled and cannot "
                 "be opened as a document: it carries no continuous signal to draw."
@@ -147,18 +185,41 @@ class StreamDocument(ads.CDockWidget):
         self._splitter.setStretchFactor(1, 1)
         self._splitter.setSizes(list(_PANEL_SIZES))
 
-        content = QWidget()
-        box = QVBoxLayout(content)
+        self._content = QWidget()
+        box = QVBoxLayout(self._content)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(0)
         box.addWidget(self._build_toolbar())
         box.addWidget(self._splitter, 1)
-        self.setWidget(content)
+        self.setWidget(self._content)
+
+        # -- the connection state machine, driven by the render clock alone ------------
+        # Before 'retint_icons', which forwards to the banner and therefore has to find
+        # the attribute already set.
+        self._state = LIVE
+        self._notice = ""  # the bare reason the banner and the status bar show
+        # Cached, because 'stream.info' and 'stream.dtype' are unreadable while a stream
+        # is disconnected, which is exactly when a resume signature is needed. The
+        # expected channel names are deliberately *not* cached: the model reports the
+        # recorded wire names in acquisition order, and that list survives a rename.
+        self._sfreq = sfreq
+        self._dtype = str(stream.dtype)
+        self._last_ts: float | None = None  # previous 'trace.last_timestamp'
+        self._data_at: float | None = None  # monotonic() of the last change; None=unset
+        self._next_attempt: float | None = None  # monotonic() deadline; None=no attempt
+        self._backoff = 0  # index into '_BACKOFF'
+        self._resumed_at: float | None = None  # monotonic() of the last resume
+        self._attempt: object | None = None  # the in-flight emitter, or None
+        self._awaiting_data = False  # reconnected, waiting for one non-empty window
+        self._banner: Banner | None = None  # built on first need, never destroyed
+        self.trace.polled.connect(self._on_polled)
+
         self.retint_icons()
         # Last, and here rather than in the window's registration: this object owns the
         # live/frozen state, so a document whose clock the caller has not started yet
-        # reports 'Live' over a viewport which never advances.
-        self.trace.start()
+        # reports 'Live' over a viewport which never advances. Through '_apply_clock'
+        # rather than 'trace.start()', so that it really is the clock's only writer.
+        self._apply_clock()
 
     # -- construction ------------------------------------------------------------------
     def _build_panel(self) -> QTabWidget:
@@ -252,14 +313,16 @@ class StreamDocument(ads.CDockWidget):
         freeze button went with its toolbar, but resuming there restarts the 33 ms clock
         with nothing left to stop it -- and over a *borrowed* stream, which the teardown
         leaves connected, that clock draws into a closed widget.
+
+        A freeze also suspends the disconnection detection, since the render clock is
+        the only clock this document has. That is a deliberate gap: the viewport is
+        already not advancing because the operator stopped it, and unfreezing notices a
+        lost stream within one render period.
         """
         if self._torn:
             return
         self._frozen = bool(frozen)
-        if self._frozen:
-            self.trace.stop()
-        else:
-            self.trace.start()
+        self._apply_clock()
         # mirrored under 'blockSignals', so that a programmatic call does not come back
         # through 'toggled' and emit 'changed' a second time.
         blocked = self._freeze_button.blockSignals(True)
@@ -383,12 +446,12 @@ class StreamDocument(ads.CDockWidget):
         :attr:`~mne_lsl.stream.BaseStream.info` and
         :attr:`~mne_lsl.stream.BaseStream.n_buffer` raise there.
 
-        The gate covers a stream which is *already* disconnected, and not one going away
-        under it: :attr:`~mne_lsl.stream.BaseStream.connected` asserts that four
-        attributes are either all set or all unset, while the acquisition thread clears
-        them one at a time, so the gate itself raises ``AssertionError`` mid-disconnect.
-        That is an upstream defect and it is not guarded here, as the fix belongs to
-        :attr:`~mne_lsl.stream.BaseStream.connected`.
+        The connection state and the live fields are decided independently, and the
+        state never blanks the others. A stalled document is still *connected*, so
+        blanking its channel count would report ``—`` for a stream the viewer can still
+        read: one document therefore honestly reports ``Interrupted • No data`` next to
+        a real channel count, while a document whose stream really went away reports
+        ``—``, because there is nothing left to read.
         """
         fields = {
             "state": "Disconnected",
@@ -397,10 +460,13 @@ class StreamDocument(ads.CDockWidget):
             "history": "—",
             "latency": "—",
         }
+        if self._state in (INTERRUPTED, MISMATCHED):
+            fields["state"] = f"Interrupted • {self._notice}"
+        elif self._stream.connected:
+            fields["state"] = "Connected • " + ("Frozen" if self._frozen else "Live")
         if not self._stream.connected:
             return fields
         sfreq = float(self._stream.info["sfreq"])
-        fields["state"] = "Connected • " + ("Frozen" if self._frozen else "Live")
         # The displayed count is what the viewport shows, not what the layout holds: a
         # stream with fewer channels than the row count shows all of them.
         fields["channels"] = (
@@ -778,6 +844,399 @@ class StreamDocument(ads.CDockWidget):
         self._refresh_freeze_ui()  # the freeze glyph and the indicator color
         self._controller_button.setIcon(icon("mdi6.tune-variant"))
         self._close_button.setIcon(icon("mdi6.close"))
+        if self._banner is not None:
+            self._banner.retint_icons()  # the banner does not follow the theme itself
+
+    # -- the connection state ----------------------------------------------------------
+    @property
+    def state(self) -> str:
+        """Connection state of the document, one of the four module constants.
+
+        :type: :class:`str`
+        """
+        return self._state
+
+    @property
+    def notice(self) -> str:
+        """One-line reason of the current interruption, ``''`` while live.
+
+        :type: :class:`str`
+        """
+        return self._notice
+
+    def retry(self) -> None:
+        """Look for the stream again, now, whatever the notice strip is showing.
+
+        Notes
+        -----
+        A no-op while live, while closed and while an attempt is already in flight; the
+        verb of both interrupted states otherwise. It is the *only* way a **borrowed**
+        stream is ever reconnected: reconnecting one in place destroys the filters, the
+        callbacks and the acquisition delay its owner set, so it happens on request and
+        never on a timer -- which is why the notice strip of a borrowed stream offers
+        Retry even while :data:`INTERRUPTED`.
+
+        The whole check is re-run rather than whatever answered the identity being
+        adopted, and the retry ladder starts over, because the operator asked for this
+        attempt.
+
+        Reopening the document as a new one is not offered: closing and reopening it
+        already does that, at the cost of every channel edit, display setting and layout
+        position -- which is what this verb exists to preserve.
+        """
+        if (
+            self._torn
+            or self._attempt is not None
+            or self._state not in (INTERRUPTED, MISMATCHED)
+        ):
+            return
+        self._backoff = 0
+        self._enter(INTERRUPTED, self._notice)
+        self._submit_attempt()
+
+    def _on_polled(self) -> None:
+        """Advance the state machine by one render tick.
+
+        Notes
+        -----
+        The single clock of this document, ~30 times a second, on the GUI thread. It
+        runs on :attr:`~mne_lsl.viewer.display.TraceDisplay.polled` rather than on a
+        :class:`~qtpy.QtCore.QTimer` of its own: the retry deadline is a
+        :func:`time.monotonic` comparison on a tick which already exists, which costs
+        33 ms of granularity on a 1--10 s interval, and a per-document timer is one more
+        object to stop on every teardown path.
+
+        The three early returns restate, locally, what :meth:`_apply_clock` already
+        arranges: this handler may only ever run for a document which is live or waiting
+        for its stream to come back. A frozen document is the one which needs saying
+        twice, because a freeze deliberately suspends the detection and nothing else --
+        so a tick arriving from anywhere but the clock must not advance the machine.
+        """
+        if self._torn or self._state in (MISMATCHED, CLOSED):
+            return
+        if self._frozen:
+            return  # the detection is suspended for the duration of a freeze
+        if self._attempt is not None:
+            return  # the clock is stopped for the duration of an attempt anyway
+        now = time.monotonic()
+        connected = self._stream.connected  # safe to read mid-teardown
+
+        # The freshness clock, from the window the display already fetched. It arms on
+        # the first non-empty window and never before: a stream which never delivered a
+        # sample has no last acquisition to be late against, and an armed-from-
+        # construction clock would declare every silent test outlet stalled.
+        ts = self.trace.last_timestamp
+        if ts is not None and ts > 0.0 and ts != self._last_ts:
+            self._last_ts, self._data_at = ts, now
+
+        if self._state == LIVE:
+            if not connected:
+                self._enter(
+                    INTERRUPTED, disconnect_text(self._stream.disconnect_reason)
+                )
+            elif (
+                self._data_at is not None
+                and self.trace.n_rows
+                and now - self._data_at > T_STALL
+            ):
+                # 'n_rows' because an all-hidden display fetches nothing at all, so its
+                # freshness clock stops on its own and would otherwise expire.
+                self._enter(INTERRUPTED, "No data")
+            elif self._resumed_at is not None and not self._in_flap_window(now):
+                self._backoff, self._resumed_at = 0, None  # the resume held
+            return
+
+        # INTERRUPTED. A tick never re-applies the settings and never declares the
+        # document live on its own account: only a reconnection which reported a match
+        # arms '_awaiting_data', and that is what keeps a *stall* -- which leaves the
+        # stream connected and its stale timestamp above zero -- from resuming itself
+        # every tick without any attempt ever being made.
+        if self._awaiting_data:
+            if not connected:
+                self._retry_later()  # lost again before any sample arrived
+            elif not self.trace.n_rows or (ts is not None and ts > 0.0):
+                # A hidden layout fetches no window, so a resume cannot be confirmed
+                # against one -- and there is no live viewport to flash either. Without
+                # this term the timestamp is frozen at its pre-outage value, which
+                # either never confirms or confirms off a stale number.
+                self._go_live(now)
+            elif now >= self._next_attempt:
+                # The source answered and then said nothing: the hung-sender case
+                # liblsl cannot see, which is why this confirmation has a deadline.
+                self._retry_later("No data")
+        elif self._next_attempt is not None and now >= self._next_attempt:
+            self._submit_attempt()
+
+    def _enter(self, state: str, notice: str) -> None:
+        """Move to an interrupted state, show its notice and report the move.
+
+        Parameters
+        ----------
+        state : str
+            Either :data:`INTERRUPTED` or :data:`MISMATCHED`.
+        notice : str
+            The bare reason, e.g. ``'Stream lost'``. The status bar shows it as
+            ``Interrupted • <reason>``.
+
+        Notes
+        -----
+        The level and the retry affordance are derived from the state rather than passed
+        in: they are fully determined by it, and a keyword a caller can get wrong is how
+        a terminal state ends up without the one button which leaves it.
+
+        The single writer of the *retry* deadline, which is what makes every failure
+        path arm exactly one and re-text the notice exactly once -- see
+        :meth:`_retry_later`, the one way in. The two other writes of that attribute are
+        not retries: the ``None`` of :meth:`_submit_attempt`, which is an attempt
+        starting, and the confirmation deadline of :meth:`_on_attempt`, already granted.
+
+        A **borrowed** stream is never retried on a timer, only on
+        :meth:`StreamDocument.retry`: reconnecting one in place destroys the filters,
+        the callbacks and the acquisition delay its owner set, and a stall fires on a
+        source which never went away at all. Its notice therefore offers Retry, which
+        for an owned stream would only race the automatic attempt.
+
+        A loss within :data:`T_STABLE` of a resume is re-worded and does **not** reset
+        the retry ladder, which is the whole anti-flap rule; a counter is not kept, as
+        the timestamp alone produces both required behaviours.
+        """
+        now = time.monotonic()
+        if state == INTERRUPTED and self._in_flap_window(now):
+            notice = "Connection unstable"
+        self._state = state
+        self._notice = notice
+        self._awaiting_data = False
+        if state == MISMATCHED:
+            text, level, retry = notice, "error", True
+            self._next_attempt = None  # terminal: nothing is retried on its own
+        elif self._owns_stream:
+            text = f"{notice} — reconnecting…"
+            level, retry = "warning", False
+            self._next_attempt = now + _BACKOFF[self._backoff]
+        else:
+            text, level, retry = notice, "warning", True  # see the note above
+            self._next_attempt = None
+        banner = self._notice_widget()
+        banner.set_notice(text, level=level, retry=retry)
+        banner.setVisible(True)
+        self._apply_clock()
+        self.changed.emit(self)  # the status bar is showing the previous state
+
+    def _go_live(self, now: float) -> None:
+        """Declare the document live again, one non-empty window after a resume."""
+        self._state = LIVE
+        self._notice = ""
+        self._awaiting_data = False
+        self._resumed_at = now  # the flap window, closed by 'T_STABLE' of good data
+        if self._banner is not None:
+            self._banner.setVisible(False)
+        self._apply_clock()
+        self.changed.emit(self)
+
+    def _in_flap_window(self, now: float) -> bool:
+        """Return whether a loss right now would still count as a flap.
+
+        Parameters
+        ----------
+        now : float
+            The :func:`time.monotonic` reading of the caller.
+
+        Returns
+        -------
+        flapping : bool
+            Whether the document resumed less than :data:`T_STABLE` seconds ago.
+
+        Notes
+        -----
+        Read by both sides of the anti-flap rule, and the elapsed test is what makes the
+        timestamp a *window* rather than a latch: without it the first flap of an outage
+        re-words every later notice as ``'Connection unstable'`` for as long as the
+        source stays away, so the real reason -- the one the operator has to act on --
+        never reaches the banner again.
+        """
+        return self._resumed_at is not None and now - self._resumed_at <= T_STABLE
+
+    def _retry_later(self, notice: str | None = None) -> None:
+        """Climb one rung of the retry ladder and re-arm through :meth:`_enter`.
+
+        Parameters
+        ----------
+        notice : str | None
+            The bare reason to show, or ``None`` to keep the one already on the banner.
+
+        Notes
+        -----
+        The one way a failed attempt is recorded, called from every failure path. That
+        matters beyond tidiness: the ladder and the deadline are two writes which must
+        agree, and going through :meth:`_enter` is what re-texts the notice strip and
+        emits :attr:`StreamDocument.changed` -- so the shared status bar learns that a
+        resume failed instead of keeping the text of the attempt before it.
+        """
+        self._backoff = min(self._backoff + 1, len(_BACKOFF) - 1)
+        self._enter(INTERRUPTED, self._notice if notice is None else notice)
+
+    def _submit_attempt(self) -> None:
+        """Reconnect in the background, with the clock stopped for the whole attempt.
+
+        Notes
+        -----
+        The display must stop reading the stream: the worker calls ``connect()`` before
+        the match is evaluated, so a stream which came back with fewer channels is
+        briefly connected while the display still holds the old layout -- and a fetch
+        then raises ``IndexError`` from inside a Qt slot, 30 times a second, logging an
+        invitation to open a bug report each time. :meth:`_apply_clock` both stops the
+        clock and suspends the display for the whole attempt, because stopping the clock
+        alone leaves every interaction free to fetch.
+        """
+        expected = StreamSignature(
+            identity=self._identity,
+            sfreq=self._sfreq,
+            dtype=self._dtype,
+            # the recorded wire names, in acquisition order, immune to every rename.
+            ch_names=tuple(self.model.acquisition_names()),
+        )
+        self._next_attempt = None
+        self._attempt = submit_reconnect(self._stream, expected, self._on_attempt)
+        self._apply_clock()
+
+    def _on_attempt(self, outcome: str, detail: str) -> None:
+        """Map the outcome of one reconnection onto a state.
+
+        Parameters
+        ----------
+        outcome : str
+            One of :data:`~mne_lsl.viewer.backend.RESUME_LIVE`,
+            :data:`~mne_lsl.viewer.backend.RESUME_MISMATCH` and
+            :data:`~mne_lsl.viewer.backend.RESUME_RETRY`.
+        detail : str
+            The refusal reason, or the text of the exception which failed the attempt.
+
+        Notes
+        -----
+        A match re-applies the settings here and hands the confirmation to a later tick.
+        The display's layout is only valid because the match rule guaranteed the channel
+        set, so the re-apply has to happen before the clock comes back -- while the move
+        to :data:`LIVE` waits for one non-empty window, so that a source which returns
+        and immediately vanishes again does not flash a live viewport.
+
+        That confirmation carries a deadline of its own, armed here: a source which
+        answered the identity and then pushed nothing is the hung-sender case
+        ``recover=False`` leaves liblsl unable to report, and without the deadline the
+        document waits for a window which never comes, repainting an all-NaN viewport at
+        30 Hz for the rest of the session.
+
+        The re-apply is guarded because it reads the stream: a source lost again in the
+        ~1 ms between the worker's comparison and this slot makes
+        :meth:`~mne_lsl.viewer.controller.ChannelModel.refresh` raise, and an escaping
+        exception here would leave the clock stopped with no deadline armed, i.e. a
+        document which is dead for the rest of the session.
+        """
+        self._attempt = None
+        if self._torn:
+            if outcome == RESUME_LIVE and self._owns_stream:
+                # The document went away while this was in flight: the worker has just
+                # connected a stream nobody will ever draw, and dropping it leaks a live
+                # inlet plus its acquisition thread for the life of the process. A
+                # borrowed stream is the caller's, and 'teardown' promised to leave it
+                # alone.
+                release_stream(self._stream)
+            return
+        now = time.monotonic()
+        if outcome == RESUME_LIVE:
+            try:
+                self._reapply()
+            except Exception as error:  # the source died again since the comparison
+                logger.warning(
+                    "Could not re-apply the settings after a resume: %s", error
+                )
+                self._retry_later()
+                return
+            self._awaiting_data = True
+            self._last_ts = None  # so the first post-resume window reads as new
+            self._next_attempt = now + T_STALL  # the confirmation deadline
+            self._apply_clock()  # the clock comes back; the state is still interrupted
+            return
+        if outcome == RESUME_MISMATCH:
+            self._enter(MISMATCHED, detail)
+            return
+        # RESUME_RETRY: the stream is not back yet. The same banner is re-texted rather
+        # than a second one built, which is what keeps a long outage from stacking
+        # notices, and the ladder climbs one rung.
+        self._retry_later()
+
+    def _reapply(self) -> None:
+        """Re-read the stream and put the user's edits back on top of it.
+
+        Notes
+        -----
+        The order is the invariant. :meth:`capture_state` runs first, while the model
+        still holds the edits; :meth:`~mne_lsl.viewer.controller.ChannelModel.refresh`
+        then makes the model the wire state again; :meth:`apply_state` makes the saved
+        deltas a real difference against it once more. Reversing the last two makes the
+        re-apply a no-op against the model's own cache.
+
+        ``refresh()`` re-baselines ``Channel.orig`` **only** when the channel count
+        changed, because only then does it rebuild. A changed count is a signature
+        mismatch, a mismatch never reaches this method, and this method is the only
+        caller of ``refresh()`` on the resume path -- so the re-baselining branch is
+        unreachable by construction and not by luck. That matters because a re-baseline
+        makes the next :meth:`capture_state` produce empty deltas, i.e. destroys the
+        configuration by the act of saving it.
+        """
+        state = self.capture_state()
+        self.model.refresh()
+        self.apply_state(state)
+
+    def _notice_widget(self) -> Banner:
+        """Return the notice strip, building it on first need.
+
+        Notes
+        -----
+        One banner per document, ever: it is inserted between the toolbar and the
+        splitter and then only re-texted and shown or hidden. Built lazily so that a
+        document which never loses its stream never pays for it, and never destroyed so
+        that a long outage cannot stack notices.
+        """
+        if self._banner is None:
+            self._banner = Banner(parent=self._content)
+            self._banner.retry_clicked.connect(self.retry)
+            self._banner.close_clicked.connect(self.closeDockWidget)
+            self._content.layout().insertWidget(1, self._banner)
+        return self._banner
+
+    def _apply_clock(self) -> None:
+        """Push the render clock and the stream access rule onto the display.
+
+        Notes
+        -----
+        The only writer of :meth:`~mne_lsl.viewer.display.TraceDisplay.start`,
+        :meth:`~mne_lsl.viewer.display.TraceDisplay.stop` and
+        :meth:`~mne_lsl.viewer.display.TraceDisplay.suspend` in this class. Three
+        independent reasons stop the clock and each has to survive the others being
+        lifted; two call sites deciding on their own is how a reconnection silently
+        undoes a freeze.
+
+        The suspension is a narrower statement than the stopped clock and is therefore
+        written separately: an attempt in flight means the stream may not be read *at
+        all*, because the worker briefly holds it connected with a channel set the
+        display has not been rebuilt against, while a freeze and a refused resume merely
+        mean the viewport does not advance. Stopping the clock alone does not keep a
+        scroll or a layout change off the stream, which is what
+        :meth:`~mne_lsl.viewer.display.TraceDisplay.suspend` exists for.
+
+        :data:`MISMATCHED` stops the clock as well. The stream is released on that path,
+        so a running clock would merely spin on the disconnected early return of the
+        fetch -- 30 ticks a second for the life of the document, and a viewport whose
+        "frozen on the last frame" would then be an accident of that early return rather
+        than a decision.
+        """
+        if self._torn:
+            return
+        self.trace.suspend(self._attempt is not None)
+        if self._frozen or self._attempt is not None or self._state == MISMATCHED:
+            self.trace.stop()
+        else:
+            self.trace.start()
 
     # -- the model -> display edge -----------------------------------------------------
     def _push_layout(self) -> None:
@@ -806,15 +1265,43 @@ class StreamDocument(ads.CDockWidget):
         the model outlives the document's widgets, and a layout push arriving afterwards
         reaches a closed display -- which for a *borrowed* stream, still connected, is a
         freshly fetched window drawn into a widget nobody can see.
+
+        A reconnection in flight is deliberately not waited on: the outcome is emitted
+        on a separate object, and :meth:`_on_attempt` returns immediately on a torn
+        document after releasing the stream the worker may have just connected. That
+        handler is nonetheless not what the release can be left to, because PyQt holds a
+        bound-method receiver **weakly**: a document whose wrapper is collected -- which
+        every configuration load does, through the purge of the closed dock widgets --
+        loses the connection silently, and the stream the worker connected then leaks
+        with its acquisition thread. The receiver is therefore re-pointed at a callable
+        which does not need this object to survive, the inverse of the usual rule: here
+        the emitter is kept alive by the runnable and the document must not be.
+
+        The stream is disconnected without asking whether it is connected.
+        :meth:`~mne_lsl.stream.StreamLSL.connect` can raise *after* it opened the inlet:
+        the channel-info read and the time correction both follow it, which leaves a
+        live, subscribed inlet on a stream reading as disconnected, i.e. exactly the
+        state a failed attempt leaves behind. ``disconnect()`` is idempotent and it
+        destroys the inlet unconditionally, so the guard bought nothing and cost that
+        inlet.
         """
         if self._torn:
             return
         self._torn = True
+        self._state = CLOSED
+        if self._attempt is not None and self._owns_stream:
+            self._attempt.finished.disconnect(self._on_attempt)
+            self._attempt.finished.connect(
+                lambda outcome, _detail, stream=self._stream: (
+                    release_stream(stream) if outcome == RESUME_LIVE else None
+                )
+            )
+        self.trace.polled.disconnect(self._on_polled)
         self.model.layout_changed.disconnect(self._push_layout)
         self.model.metadata_changed.disconnect(self.trace.refresh_metadata)
         self.trace.close()
         self.channels.close()
-        if self._owns_stream and self._stream.connected:
+        if self._owns_stream:
             try:
                 self._stream.disconnect()
             except Exception as error:  # deliberately broad, see the note above

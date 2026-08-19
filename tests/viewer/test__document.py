@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -8,9 +9,23 @@ import pytest
 from mne._fiff.constants import FIFF
 from qtpy.QtWidgets import QMainWindow
 
+from mne_lsl.viewer import _document
 from mne_lsl.viewer._bootstrap import configure_docking, import_ads
-from mne_lsl.viewer._document import StreamDocument
-from mne_lsl.viewer.backend import StreamIdentity
+from mne_lsl.viewer._document import (
+    CLOSED,
+    INTERRUPTED,
+    LIVE,
+    MISMATCHED,
+    StreamDocument,
+)
+from mne_lsl.viewer.backend import (
+    RESUME_LIVE,
+    RESUME_MISMATCH,
+    RESUME_RETRY,
+    StreamIdentity,
+    reconnect_stream,
+)
+from mne_lsl.viewer.backend._discovery import _ReconnectSignals
 from mne_lsl.viewer.controller import ChannelsPage
 from mne_lsl.viewer.display import TraceDisplay
 from mne_lsl.viewer.theme import tokens
@@ -20,6 +35,7 @@ ads = import_ads()
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
+    from pytestqt.qtbot import QtBot
     from qtpy.QtWidgets import QApplication
 
     from mne_lsl.stream import StreamLSL
@@ -300,19 +316,6 @@ def test_document_refuses_an_event_source(
         StreamDocument(manager, stream, identity)
 
 
-def test_status_fields_documents_the_gate() -> None:
-    """Test that the docstring no longer claims the gate covers a mid-disconnect read.
-
-    'BaseStream.connected' asserts that four attributes are all set or all unset, while
-    the acquisition thread clears them one at a time, so the gate itself raises
-    'AssertionError' in exactly the case it was documented to handle. The root cause is
-    upstream and deliberately not guarded here, thus what this phase owns is the claim.
-    """
-    notes = StreamDocument.status_fields.__doc__.split("Notes")[1]
-    assert "may have just gone away" not in notes
-    assert "AssertionError" in notes
-
-
 # -- freeze and the controller toggle -------------------------------------------------
 def test_freeze(
     document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
@@ -369,6 +372,11 @@ def test_frozen_viewport_does_not_advance(
     Freeze stops the render clock and nothing else, thus a layout push used to run a
     fetch of its own and jump the viewport to the newest samples: the frozen document
     silently showed twice the samples it had been frozen on, still labelled 'Frozen'.
+
+    'equal_nan=True' is mandatory on both comparisons: fewer samples are pushed than the
+    window holds, so the un-filled prefix is drawn as NaN, and 'np.array_equal' is
+    'False' for two *identical* NaN-bearing arrays -- which fails the positive assertion
+    and makes the negative one hold whatever the document does.
     """
     doc, _, push = document()
     trace = doc.trace
@@ -383,12 +391,12 @@ def test_frozen_viewport_does_not_advance(
     assert doc.frozen
     assert not trace.running
     row = trace._rows.index(5)
-    assert np.array_equal(trace._assigned[row].getData()[1], before)
+    assert np.array_equal(trace._assigned[row].getData()[1], before, equal_nan=True)
 
     doc.set_frozen(False)
     trace._render()
     row = trace._rows.index(5)
-    assert not np.array_equal(trace._assigned[row].getData()[1], before)
+    assert not np.array_equal(trace._assigned[row].getData()[1], before, equal_nan=True)
 
 
 def test_frozen_rows_change_keeps_the_traces(
@@ -586,6 +594,28 @@ def test_teardown_closes_the_children_before_the_stream(
     doc.teardown()
     assert order == ["trace", "channels", "disconnect"]
     assert not stream.connected
+
+
+def test_teardown_releases_a_half_connected_inlet(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a stream which reads as disconnected still has its inlet destroyed.
+
+    'connect()' can raise *after* it opened the inlet -- the channel-info read and the
+    time correction both follow it -- which leaves a live, subscribed inlet on a stream
+    whose 'connected' is 'False'. That is the state a failed reconnection attempt leaves
+    behind, so a teardown which asked 'connected' first leaked that inlet and its
+    acquisition thread for the life of the process. The state is reproduced here by
+    nulling one backing attribute with the acquisition stopped, which is what a partial
+    initialization looks like from outside without paying a second connection.
+    """
+    doc, stream, _ = document()
+    stream._executor.shutdown(wait=True, cancel_futures=True)
+    stream._buffer = None  # the shape of a 'connect()' which raised after 'open_stream'
+    assert not stream.connected
+    assert stream._inlet is not None
+    doc.teardown()
+    assert stream._inlet is None
 
 
 def test_teardown_borrowed(
@@ -1012,3 +1042,881 @@ def test_apply_state_is_best_effort_per_key(
     assert doc.controller_visible
     assert doc.trace.controls.state == display
     assert "absent" in caplog.text
+
+
+# -- disconnection detection and recovery ---------------------------------------------
+def _tick(doc: StreamDocument) -> None:
+    """Run one full render tick: the display polls, then reports it."""
+    doc.trace._render()
+
+
+def _spin(doc: StreamDocument, n: int = 1) -> None:
+    """Report ``n`` ticks without polling the stream again.
+
+    What lets a test advance the state machine while the window the display holds, and
+    therefore 'trace.last_timestamp', stays exactly where it was.
+    """
+    for _ in range(n):
+        doc.trace.polled.emit()
+
+
+def _spy_reconnect(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
+    """Replace 'submit_reconnect' with a spy recording ``(stream, expected, slot)``.
+
+    No test of this block touches the network: the reconnection is never performed,
+    and the test feeds the outcome by calling the recorded slot itself.
+
+    A real '_ReconnectSignals' is handed back, connected exactly as 'submit_reconnect'
+    connects it, because the handle is not opaque to the document: a teardown re-points
+    the in-flight attempt at a receiver which does not need the document to survive, so
+    a bare sentinel here would test a document nothing can be re-pointed on.
+    """
+    calls: list[tuple] = []
+    emitters: list[_ReconnectSignals] = []
+
+    def _submit(stream: object, expected: object, on_finished: Callable) -> object:
+        signals = _ReconnectSignals()
+        signals.finished.connect(on_finished)
+        emitters.append(signals)  # held, as the pool's runnable holds the real one
+        calls.append((stream, expected, on_finished))
+        return signals
+
+    monkeypatch.setattr(_document, "submit_reconnect", _submit)
+    return calls
+
+
+def test_fresh_document_is_live(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a document starts live, with no reason and no notice strip built.
+
+    Kills initialising the state to anything else, and kills building the banner
+    eagerly: it costs a widget per document for a state most documents never reach.
+    """
+    doc, _, _ = document()
+    assert doc.state == LIVE
+    assert doc.notice == ""
+    assert doc._banner is None
+    assert doc.status_fields()["state"] == "Connected • Live"
+
+
+def test_lost_stream_interrupts(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a disconnected stream moves the document and says why.
+
+    Kills dropping the 'connected' branch, and kills not emitting 'changed', which
+    leaves the shared status bar showing 'Connected • Live' over a stream which is gone.
+    The status fields are asserted here too: the state must name the reason, and the
+    live fields must fall back rather than be read off a stream which raises.
+    """
+    doc, stream, _ = document()
+    seen: list[StreamDocument] = []
+    doc.changed.connect(seen.append)
+    stream.disconnect()
+    _tick(doc)
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "Stream disconnected"
+    banner = doc._banner
+    assert banner is not None
+    assert not banner.isHidden()
+    assert "Stream disconnected" in banner._label.text()
+    assert "reconnecting" in banner._label.text()
+    assert banner._retry_button.isHidden()  # the viewer is already retrying
+    assert seen == [doc]
+    fields = doc.status_fields()
+    assert fields["state"] == "Interrupted • Stream disconnected"
+    for key in ("channels", "sfreq", "history", "latency"):
+        assert fields[key] == "—", key
+
+
+def test_stall_interrupts_only_once_armed(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the stall detector: unarmed, all-hidden, expired, and not self-resuming.
+
+    Kills arming the freshness clock in the constructor, which would move every document
+    over a silent outlet to 'Interrupted' after five seconds -- an order-dependent flake
+    across the whole suite. Kills dropping the 'n_rows' term, which is a false notice
+    whenever the operator hides every row. Kills sharing one wording with a lost stream.
+
+    And it kills the one-stage resume: a stall leaves the stream *connected* with its
+    stale timestamp above zero, so a tick which resumed on 'connected and ts > 0' would
+    flash the notice every 'T_STALL' seconds forever and never reconnect anything.
+    """
+    doc, _, push = document()
+    monkeypatch.setattr(_document, "T_STALL", 0.0)
+    _spin(doc, 5)  # nothing was ever pushed: the clock is unarmed
+    assert doc.state == LIVE
+    push(50)
+    _tick(doc)  # the first non-empty window arms it
+    assert doc.state == LIVE
+
+    doc.model.set_visible(list(range(doc.model.rowCount())), False)
+    assert doc.trace.n_rows == 0
+    _spin(doc, 5)
+    assert doc.state == LIVE
+    doc.model.set_visible(list(range(doc.model.rowCount())), True)
+    _spin(doc, 2)
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "No data"
+    assert doc.status_fields()["state"] == "Interrupted • No data"
+    # still connected, so the live fields keep coming from the stream
+    assert doc.status_fields()["channels"] == "8/8 ch"
+
+    refreshes: list[int] = []
+    monkeypatch.setattr(doc.model, "refresh", lambda: refreshes.append(1))
+    calls = _spy_reconnect(monkeypatch)
+    _spin(doc, 30)
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "No data"
+    assert refreshes == []  # no tick may re-apply the settings on its own
+    assert calls == []  # and the first retry deadline has not passed yet
+
+
+def test_attempt_is_submitted_once_and_stops_the_clock(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+    qtbot: QtBot,
+) -> None:
+    """Test the retry deadline, the single-flight guard, the clock and a user freeze.
+
+    Kills dropping the deadline or the in-flight guard, which would submit a
+    reconnection 30 times a second. Kills dropping the '_attempt' term from the clock
+    rule: a running clock across an attempt landing on a narrower stream raises
+    'IndexError' at 30 Hz. Kills dropping the '_frozen' term, i.e. a reconnection which
+    silently unfreezes the viewport the operator froze.
+    """
+    doc, stream, _ = document()
+    monkeypatch.setattr(_document, "_BACKOFF", (0.05, 0.1, 0.2, 0.4))
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    assert doc.state == INTERRUPTED
+    _spin(doc, 5)
+    assert calls == []  # the deadline is 50 ms away and no time has passed
+
+    qtbot.waitUntil(lambda: len(calls) == 1, timeout=5000)
+    assert doc._attempt is not None
+    assert not doc.trace.running  # stopped for the whole attempt
+    _spin(doc, 5)
+    assert len(calls) == 1  # never two at once
+
+    doc.set_frozen(True)
+    calls[0][2](RESUME_RETRY, "still gone")
+    assert not doc.trace.running  # the freeze survived the outcome
+    doc.set_frozen(False)
+    assert doc.trace.running
+
+
+def test_retry_climbs_the_backoff_and_reuses_the_banner(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a failed reconnection climbs the ladder and re-texts one banner.
+
+    Kills resetting the ladder on a failure, which re-resolves the network every second
+    for the whole outage. Kills building a second banner per attempt, which stacks a
+    notice strip per retry down the document.
+    """
+    doc, stream, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    banner = doc._banner
+    assert doc._backoff == 0
+    assert doc._next_attempt - time.monotonic() == pytest.approx(1.0, abs=0.1)
+
+    intervals: list[float] = []
+    for _ in range(5):
+        doc._submit_attempt()
+        before = time.monotonic()
+        calls[-1][2](RESUME_RETRY, "still gone")
+        intervals.append(round(doc._next_attempt - before, 1))
+        assert doc._banner is banner
+    assert intervals == [2.0, 5.0, 10.0, 10.0, 10.0]
+    assert doc.state == INTERRUPTED
+
+
+def test_mismatch_is_terminal_and_retry_leaves_it(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the refused-resume state, its affordance, and the verb which leaves it.
+
+    Kills leaving the retry deadline armed in a terminal state, i.e. re-resolving the
+    network forever for a stream which will never be accepted. Kills routing a refusal
+    through the resume, which would re-baseline the model against the wrong stream.
+    Kills not wiring the banner's Retry, and kills not resetting the ladder when the
+    operator asks for the attempt.
+
+    And it kills dropping the state from the clock rule: neither other stop reason holds
+    here, so the 30 Hz clock would run for the life of the document over a stream which
+    was released -- and the advertised "frozen on the last frame" would be an accident
+    of the fetch's disconnected early return rather than a decision.
+    """
+    doc, stream, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    refreshes: list[int] = []
+    monkeypatch.setattr(doc.model, "refresh", lambda: refreshes.append(1))
+    stream.disconnect()
+    _tick(doc)
+    doc._submit_attempt()
+    doc._backoff = 2  # a ladder already climbed, so the reset below is observable
+    reason = "the channel count changed from 8 to 3"
+    calls[-1][2](RESUME_MISMATCH, reason)
+    assert doc.state == MISMATCHED
+    assert doc.notice == reason
+    assert doc.status_fields()["state"] == f"Interrupted • {reason}"
+    banner = doc._banner
+    assert not banner.isHidden()
+    assert reason in banner._label.text()
+    assert "reconnecting" not in banner._label.text()
+    assert not banner._retry_button.isHidden()
+    assert doc._next_attempt is None
+    assert refreshes == []
+    # the clock is stopped by the state, with neither other reason holding
+    assert not doc.trace.running
+    assert not doc.frozen
+    assert doc._attempt is None
+    submitted = len(calls)
+    _spin(doc, 30)
+    assert len(calls) == submitted  # terminal: nothing retries on its own
+
+    banner._retry_button.click()
+    assert doc.state == INTERRUPTED
+    assert doc._backoff == 0
+    assert len(calls) == submitted + 1
+    assert doc._banner is banner
+
+
+def test_resume_reapplies_then_waits_for_data(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the two-stage resume, its order, and that the user's edits survive it.
+
+    The stream is genuinely reconnected here, on the still-live outlet, because the
+    re-apply reads it. Kills reordering 'refresh' and 'apply_state', which makes the
+    re-apply a no-op against the model's own cache. Kills declaring the document live on
+    the outcome instead of on the first non-empty window, which flashes a live viewport
+    for a source which returns and vanishes again.
+
+    And it kills any path which lets 'refresh()' rebuild: a rebuild re-baselines
+    'Channel.orig', which makes the next 'capture_state' produce empty deltas, i.e.
+    destroys the configuration by the act of saving it.
+
+    The signature the attempt carries is asserted here rather than in a test of its own,
+    because this is the one test whose document has been renamed: the expected channel
+    names are the **acquisition** names, so a signature built from the model's current
+    names would refuse every renamed document its own stream. And 'changed' is asserted
+    on the resume, without which the status bar keeps reading 'Interrupted' over a live
+    viewport.
+    """
+    doc, stream, push = document(ch_names=list(_SCRAMBLED))
+    _edit(doc)
+    before = doc.capture_state()
+    for key in ("channel_order", "hidden", "renames", "types", "units", "bads"):
+        assert before[key], key
+
+    order: list[str] = []
+    original = (doc.capture_state, doc.model.refresh, doc.apply_state)
+
+    def _capture() -> dict:
+        order.append("capture")
+        return original[0]()
+
+    def _refresh() -> None:
+        order.append("refresh")
+        original[1]()
+
+    def _apply(state: object) -> None:
+        order.append("apply")
+        original[2](state)
+
+    monkeypatch.setattr(doc, "capture_state", _capture)
+    monkeypatch.setattr(doc.model, "refresh", _refresh)
+    monkeypatch.setattr(doc, "apply_state", _apply)
+
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    assert doc.state == INTERRUPTED
+    doc._submit_attempt()
+    expected = calls[-1][1]
+    assert expected.identity == doc.identity
+    assert expected.ch_names == tuple(_SCRAMBLED)  # the wire names, not the edited ones
+    assert expected.sfreq == 100.0
+    assert expected.dtype == "float32"
+    reconnect_stream(stream)  # what the worker does before it reports a match
+    calls[-1][2](RESUME_LIVE, "")
+    assert order == ["capture", "refresh", "apply"]
+    assert doc.state == INTERRUPTED  # not live until one window arrives
+    assert not doc._banner.isHidden()
+    assert doc.trace.running
+
+    seen: list[StreamDocument] = []
+    doc.changed.connect(seen.append)
+    push(50)
+    _tick(doc)
+    assert doc.state == LIVE
+    assert doc.notice == ""
+    assert doc._banner.isHidden()
+    assert seen == [doc]  # the status bar is told the document is live again
+    monkeypatch.setattr(doc, "capture_state", original[0])
+    assert doc.capture_state() == before
+
+
+def test_flap_rewords_and_keeps_the_backoff(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a loss shortly after a resume is re-worded and keeps the ladder.
+
+    A source which comes and goes must not restart the ladder at one second per attempt
+    every time, and the operator has to be told the connection is unstable rather than
+    shown the same notice as a first outage. Kills resetting the ladder on every resume.
+    """
+    doc, _, push = document()
+    monkeypatch.setattr(_document, "T_STALL", 0.0)
+    calls = _spy_reconnect(monkeypatch)
+    push(50)
+    _tick(doc)
+    _spin(doc, 2)
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "No data"
+    banner = doc._banner
+
+    doc._submit_attempt()
+    calls[-1][2](RESUME_RETRY, "still gone")
+    assert doc._backoff == 1
+    # the source recovered: the stream never left, so a match is what the worker reports
+    doc._submit_attempt()
+    calls[-1][2](RESUME_LIVE, "")
+    push(50)
+    _tick(doc)
+    assert doc.state == LIVE
+    assert doc._resumed_at is not None
+
+    _spin(doc, 2)  # 'T_STALL' is 0, so the very next tick loses it again
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "Connection unstable"
+    assert doc._backoff == 1  # the ladder kept climbing
+    assert doc._banner is banner
+
+
+def test_teardown_closes_and_releases_a_late_resume(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a torn document stops listening and releases a stream which came back.
+
+    Kills dropping the torn guard of the outcome handler: the worker transfers a
+    connected stream, so a document which went away while an attempt was in flight leaks
+    a live inlet plus its acquisition thread for the life of the process.
+    """
+    doc, stream, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    doc._submit_attempt()
+    on_finished = calls[-1][2]
+
+    doc.teardown()
+    assert doc.state == CLOSED
+    with pytest.raises((TypeError, RuntimeError)):
+        doc.trace.polled.disconnect(doc._on_polled)  # already dropped
+
+    reconnect_stream(stream)  # the worker got the stream back
+    assert stream.connected
+    on_finished(RESUME_LIVE, "")
+    assert not stream.connected
+
+
+def test_awaiting_data_has_a_deadline_and_a_hidden_layout_confirms(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the two ways the wait for the first post-resume window used to never end.
+
+    Both are a source which answered the identity and then delivered nothing. Kills
+    dropping the confirmation deadline: a hung sender is what 'recover=False' leaves
+    liblsl unable to report, so without a deadline of its own the document waits forever
+    for a window which never comes, repainting an all-NaN viewport at 30 Hz, and the
+    attempt count stays at one for the rest of the session.
+
+    And it kills dropping the 'n_rows' term: an all-hidden display fetches nothing at
+    all, so 'last_timestamp' is frozen at whatever it held before the outage -- here the
+    0.0 of a stream which never delivered a sample, which no positive test can ever
+    satisfy. There is no live viewport to flash either, which is what the same term
+    exists for eleven lines above in the stall branch.
+
+    One stream and one reconnection for both halves: the second stage needs a stream the
+    worker really did reconnect, because the resume re-applies the document state and
+    that reads the stream.
+    """
+    doc, stream, _ = document()
+    monkeypatch.setattr(_document, "T_STALL", 0.0)
+    monkeypatch.setattr(_document, "_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    assert doc.state == INTERRUPTED
+    reconnect_stream(stream)  # what the worker does before it reports a match
+    doc._submit_attempt()
+    calls[-1][2](RESUME_LIVE, "")
+    assert doc._awaiting_data
+    assert doc._next_attempt is not None  # the confirmation carries its own deadline
+
+    _tick(doc)  # the source answered and then said nothing
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "No data"
+    assert not doc._awaiting_data
+    assert doc._backoff == 1
+    submitted = len(calls)
+    _spin(doc, 1)
+    assert len(calls) == submitted + 1  # a second attempt, not a wedge
+
+    doc.model.set_visible(list(range(doc.model.rowCount())), False)
+    assert doc.trace.n_rows == 0
+    assert not doc.trace.last_timestamp  # 0.0: nothing was ever acquired
+    calls[-1][2](RESUME_LIVE, "")
+    _tick(doc)
+    assert doc.state == LIVE
+    assert doc.notice == ""
+    _spin(doc, 5)
+    assert doc.state == LIVE  # and the all-hidden layout does not stall it either
+
+
+def test_lost_again_while_awaiting_data_retries_and_says_so(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the one failure path which reached neither the banner nor the status bar.
+
+    A stream lost again before the first post-resume window is the only failure which
+    did not go through '_enter': the ladder was climbed and a deadline armed in place,
+    so the notice strip kept the text of the attempt before it and 'changed' was never
+    emitted -- the shared status bar therefore never learned that the resume had failed.
+    Kills climbing the ladder anywhere but through the one helper.
+    """
+    doc, stream, push = document()
+    monkeypatch.setattr(_document, "T_STALL", 0.0)
+    calls = _spy_reconnect(monkeypatch)
+    push(50)
+    _tick(doc)  # the first non-empty window arms the freshness clock
+    _spin(doc, 2)
+    assert doc.state == INTERRUPTED
+    assert doc.notice == "No data"
+    doc._submit_attempt()
+    calls[-1][2](RESUME_LIVE, "")  # the stream never left: the worker reports a match
+    assert doc._awaiting_data
+    banner = doc._banner
+    # a sentinel, so that the re-texting below is a change and not a coincidence.
+    banner.set_notice("sentinel")
+    seen: list[StreamDocument] = []
+    doc.changed.connect(seen.append)
+
+    stream.disconnect()
+    _tick(doc)
+    assert not doc._awaiting_data
+    assert doc.state == INTERRUPTED
+    assert doc._backoff == 1  # the ladder climbed
+    assert doc._next_attempt is not None  # and a deadline is armed
+    assert seen == [doc]  # the status bar is told
+    assert "No data" in banner._label.text()
+    assert "reconnecting" in banner._label.text()
+
+
+def test_a_failing_reapply_retries_instead_of_killing_the_document(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that a re-apply which raises leaves a document which still retries.
+
+    The re-apply reads the stream, and a source lost again in the ~1 ms between the
+    worker's comparison and this slot makes it raise -- a flapping source, which is what
+    the ladder and the stability window exist for. The raise used to escape past
+    '_apply_clock', the handler's last line, leaving the clock stopped, no attempt in
+    flight and no deadline armed: a document dead for the rest of the session, with a
+    banner still promising a reconnection.
+    """
+    doc, stream, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    doc._submit_attempt()
+
+    def _raise() -> None:
+        raise RuntimeError("the stream is not connected")
+
+    monkeypatch.setattr(doc, "_reapply", _raise)
+    caplog.set_level(logging.WARNING, logger="mne_lsl")
+    calls[-1][2](RESUME_LIVE, "")
+    assert doc.state == INTERRUPTED
+    assert not doc._awaiting_data
+    assert doc._backoff == 1
+    assert doc._next_attempt is not None
+    assert doc._attempt is None
+    assert doc.trace.running  # the clock came back
+    assert not doc.trace._suspended
+    assert "Could not re-apply the settings" in caplog.text
+
+
+def test_an_interaction_never_touches_a_suspended_or_frozen_stream(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that an interaction reaches the display and never reports a render tick.
+
+    A stopped clock is not what keeps this document off its stream: a layout change, a
+    scroll and a row step all repaint by themselves, and a repaint which finds nothing
+    it can reuse re-reads the window. During an attempt that fetch runs against a stream
+    the worker has just reconnected -- possibly narrower -- which raises 'IndexError'
+    from inside whichever interaction triggered it. And it used to *emit* the render
+    tick as well, so one visibility click advanced the connection state machine.
+
+    Every layout change here **widens** the layout, which is the load-bearing detail: a
+    narrower one is a subset of the retained window, so the repaint reindexes it and
+    reaches no fetch at all. A test built on hiding a channel passes with both
+    invariants deleted -- it is the retained frame doing the work, the same trap as
+    asserting 'not trace.running' instead of the invariant.
+    """
+    doc, stream, push = document()
+    monkeypatch.setattr(_document, "_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+    calls = _spy_reconnect(monkeypatch)
+    doc.model.set_visible([0], False)  # so the retained window will not carry that row
+    push(50)
+    _tick(doc)
+    assert doc.state == LIVE
+    fetches: list[int] = []
+    ticks: list[int] = []
+    original = stream.get_data
+
+    def _record(winsize=None, picks=None, exclude="bads"):
+        fetches.append(1)
+        return original(winsize, picks, exclude)
+
+    monkeypatch.setattr(stream, "get_data", _record)
+    doc.trace.polled.connect(lambda: ticks.append(1))
+
+    # (a) live and running: the interaction may fetch, and may not report a tick
+    doc.model.set_visible([0], True)
+    assert fetches  # the new row's samples have to come from somewhere
+    assert ticks == []
+
+    # (b) during an attempt the stream is off limits, repaint or no repaint
+    doc.model.set_visible([0], False)
+    doc._submit_attempt()
+    assert doc.trace._suspended
+    fetches.clear()
+    doc.model.set_visible([0], True)  # a pick the retained window does not carry
+    doc.trace.scroll_by(1)
+    doc.trace.controls.set_rows(4)
+    assert fetches == []
+    assert ticks == []
+    calls[-1][2](RESUME_RETRY, "still gone")
+    assert not doc.trace._suspended
+    assert doc.state == INTERRUPTED
+    submitted = len(calls)
+
+    # (c) frozen: the new row still has to come from somewhere, so a fetch is legitimate
+    # -- but the machine must not advance, though the retry deadline has passed
+    doc.set_frozen(True)
+    doc.model.set_visible([0], False)
+    doc.model.set_visible([0], True)
+    assert ticks == []
+    assert len(calls) == submitted
+    doc.set_frozen(False)
+    _spin(doc, 1)
+    assert len(calls) == submitted + 1  # and the clock still drives one
+
+
+def test_a_borrowed_stream_is_reconnected_only_on_request(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that the viewer never reconnects, nor releases, a stream it does not own.
+
+    A reconnection replaces the object's inlet and its buffer, which drops the filters,
+    the callbacks, the acquisition delay, the reference channels and the processing
+    flags its owner set on it -- and the stall branch fires on a source which never went
+    away at all, merely one which went quiet. So a borrowed document offers Retry rather
+    than arming a deadline, and a resume which lands after the document is gone leaves
+    the caller's stream connected.
+    """
+    doc, stream, _ = document(owns_stream=False)
+    monkeypatch.setattr(_document, "_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+    calls = _spy_reconnect(monkeypatch)
+    released: list[object] = []
+    monkeypatch.setattr(_document, "release_stream", released.append)
+    stream.disconnect()
+    _tick(doc)
+    assert doc.state == INTERRUPTED
+    assert doc._next_attempt is None  # nothing is retried on a timer
+    banner = doc._banner
+    assert not banner._retry_button.isHidden()  # the operator's verb instead
+    assert "reconnecting" not in banner._label.text()
+    _spin(doc, 30)
+    assert calls == []
+
+    banner._retry_button.click()
+    assert len(calls) == 1
+    doc.retry()
+    assert len(calls) == 1  # single-flight: an attempt is already in flight
+    doc.teardown()
+    calls[-1][2](RESUME_LIVE, "")
+    assert released == []
+
+
+def test_retry_while_live_is_a_no_op(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that the recovery verb does nothing at all to a healthy document.
+
+    Reachable programmatically, and the notice strip's own button is only ever shown by
+    an interrupted state. Kills dropping the state guard, which would let a caller
+    disconnect and re-resolve a stream which is delivering.
+    """
+    doc, _, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    doc.retry()
+    assert calls == []
+    assert doc.state == LIVE
+    assert doc._banner is None
+    assert doc.trace.running
+
+
+def test_the_stability_window_closes_and_resets_the_ladder(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a resume which held resets the ladder, and that a fresh one does not.
+
+    'T_STABLE' is the second read of the resume timestamp, and without it the timestamp
+    is a latch rather than a window: the ladder never resets, so a source which flapped
+    once hours ago is still retried at ten-second intervals, and every later notice
+    keeps the 'Connection unstable' wording instead of the reason to act on.
+    """
+    doc, _, push = document()
+    monkeypatch.setattr(_document, "T_STALL", 0.0)
+    calls = _spy_reconnect(monkeypatch)
+    push(50)
+    _tick(doc)
+    _spin(doc, 2)
+    assert doc.state == INTERRUPTED
+    doc._submit_attempt()
+    calls[-1][2](RESUME_RETRY, "still gone")
+    assert doc._backoff == 1
+    doc._submit_attempt()
+    calls[-1][2](RESUME_LIVE, "")
+    push(50)
+    _tick(doc)
+    assert doc.state == LIVE
+    assert doc._resumed_at is not None
+
+    monkeypatch.setattr(_document, "T_STALL", 100.0)  # no stall for the rest of this
+    _spin(doc, 2)
+    assert doc._backoff == 1  # inside the window: the resume has not held yet
+    assert doc._resumed_at is not None
+    monkeypatch.setattr(_document, "T_STABLE", 0.0)
+    _spin(doc, 1)
+    assert doc._backoff == 0  # the resume held
+    assert doc._resumed_at is None
+
+
+def test_a_mismatch_inside_the_stability_window_keeps_its_reason(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that the anti-flap wording never overwrites a refusal.
+
+    The re-wording belongs to 'INTERRUPTED' alone. A refusal names the field which
+    changed, and that is the only thing on screen telling the operator that the stream
+    which came back is not theirs -- 'Connection unstable' over it would describe a
+    source which is in fact answering perfectly.
+    """
+    doc, stream, _ = document()
+    calls = _spy_reconnect(monkeypatch)
+    stream.disconnect()
+    _tick(doc)
+    doc._resumed_at = time.monotonic()  # a resume which landed a moment ago
+    doc._submit_attempt()
+    reason = "the sampling rate changed from 100 Hz to 200 Hz"
+    calls[-1][2](RESUME_MISMATCH, reason)
+    assert doc.state == MISMATCHED
+    assert doc.notice == reason
+    assert reason in doc._banner._label.text()
+
+
+# -- the same, end to end over a real source which goes away --------------------------
+# The only tests of this module which start a subprocess. Every assertion is on document
+# state and never on an escaping exception: the acquisition thread re-raises into a
+# discarded 'Future', so nothing reaches the caller's thread.
+_MIXED_PICKS = ["Fpz", "Fp2", "ECG", "TRIGGER"]
+# A subset which keeps the channel *type* set mixed. Load-bearing: 'PlayerLSL' publishes
+# the single channel type of its file, or '' for a mixed one, so an EEG-only pick
+# changes the published 'stype' and therefore the identity -- and the mismatch test
+# below would then silently exercise the retry path instead of the match rule.
+
+
+def _has_data(doc: StreamDocument) -> bool:
+    """Return whether the display has fetched a window carrying a real sample."""
+    return bool(doc.trace.last_timestamp)
+
+
+def _open(
+    manager: ads.CDockManager, handle: object, index: int = 0
+) -> tuple[StreamDocument, StreamLSL]:
+    """Connect to a running player and open a document over it, as the window does."""
+    from mne_lsl.viewer.backend import connect_stream, resolve_descriptors
+
+    identity = (handle.name, "", handle.source_id)
+    deadline = time.monotonic() + 30.0
+    while time.monotonic() < deadline:
+        for descriptor in resolve_descriptors(1.0):
+            if descriptor.identity.as_tuple() == identity:
+                stream = connect_stream(descriptor, 4.0)
+                doc = StreamDocument(manager, stream, descriptor.identity)
+                _dock(manager, doc, index)
+                return doc, stream
+    pytest.fail(f"The player {identity} never became resolvable.")
+
+
+@pytest.mark.slow
+def test_lost_source_is_detected_per_document(
+    manager: ads.CDockManager,
+    player: Callable[..., object],
+    qtbot: QtBot,
+    flush_deletes: Callable[..., None],
+) -> None:
+    """Test that one lost source interrupts its own document and no other.
+
+    Kills any coupling of two documents' connection state: the detection is per document
+    by construction, and a shared flag would freeze every open stream on one outage.
+    """
+    first, second = player(), player()
+    doc_a, stream_a = _open(manager, first, 0)
+    doc_b, stream_b = _open(manager, second, 1)
+    try:
+        qtbot.waitUntil(lambda: _has_data(doc_b), timeout=20000)
+        first.kill()
+        qtbot.waitUntil(lambda: doc_a.state == INTERRUPTED, timeout=20000)
+        assert doc_a.notice == "Stream lost"
+        assert doc_a._banner is not None
+        assert not doc_a._banner.isHidden()
+        assert doc_b.state == LIVE
+        assert doc_b._banner is None
+        advanced = doc_b.trace.last_timestamp
+        qtbot.waitUntil(
+            lambda: bool(doc_b.trace.last_timestamp > advanced), timeout=20000
+        )
+        assert doc_b.state == LIVE
+    finally:
+        doc_a.teardown()
+        doc_b.teardown()
+        flush_deletes(doc_a, doc_b)
+
+
+@pytest.mark.slow
+def test_source_which_returns_resumes_with_a_gap(
+    manager: ads.CDockManager,
+    player: Callable[..., object],
+    qtbot: QtBot,
+    flush_deletes: Callable[..., None],
+) -> None:
+    """Test that a source which comes back unchanged resumes, leaving a gap on screen.
+
+    The NaN assertion is what pins the gap requirement end to end: the reconnection
+    allocates a fresh buffer, and the un-filled part of it must be drawn as a break in
+    the curve rather than joined to the first real sample. Kills the whole resume path,
+    and kills the un-filled window rule.
+    """
+    handle = player()
+    doc, stream = _open(manager, handle)
+    try:
+        qtbot.waitUntil(lambda: _has_data(doc), timeout=20000)
+        handle.kill()
+        qtbot.waitUntil(lambda: doc.state == INTERRUPTED, timeout=20000)
+        handle.start()
+        qtbot.waitUntil(lambda: doc.state == LIVE, timeout=60000)
+        assert doc.notice == ""
+        assert doc._banner.isHidden()
+        assert stream.connected
+        assert np.isnan(doc.trace._frame[1]).any()  # the fetched window
+        row = min(doc.trace._assigned)
+        assert np.isnan(doc.trace._assigned[row].getData()[1]).any()  # and on screen
+    finally:
+        doc.teardown()
+        flush_deletes(doc)
+
+
+@pytest.mark.slow
+def test_source_which_returns_narrower_is_refused(
+    manager: ads.CDockManager,
+    player: Callable[..., object],
+    qtbot: QtBot,
+    flush_deletes: Callable[..., None],
+) -> None:
+    """Test that a source which came back with other channels is refused, not adopted.
+
+    Every piece of stream-side state the viewer holds is an integer index, so adopting a
+    narrower stream would draw one channel's samples under another's label. Kills the
+    match rule end to end, and kills forgetting the release on the worker: the stream
+    was connected to be compared and must not stay open.
+    """
+    handle = player()
+    doc, stream = _open(manager, handle)
+    try:
+        qtbot.waitUntil(lambda: _has_data(doc), timeout=20000)
+        frozen = doc.trace._frame[1].copy()
+        handle.kill()
+        qtbot.waitUntil(lambda: doc.state == INTERRUPTED, timeout=20000)
+        handle.start(picks=list(_MIXED_PICKS))
+        qtbot.waitUntil(lambda: doc.state == MISMATCHED, timeout=60000)
+        assert "channel count changed from 67 to 4" in doc.notice
+        assert not doc._banner._retry_button.isHidden()
+        assert not stream.connected  # released by the worker
+        assert np.array_equal(doc.trace._frame[1], frozen, equal_nan=True)
+    finally:
+        doc.teardown()
+        flush_deletes(doc)
+
+
+@pytest.mark.slow
+def test_flapping_source_reuses_one_notice(
+    manager: ads.CDockManager,
+    player: Callable[..., object],
+    qtbot: QtBot,
+    flush_deletes: Callable[..., None],
+) -> None:
+    """Test three real outages in a row: one notice strip, and the unstable wording.
+
+    Kills building a notice per outage, which stacks one strip per retry down the
+    document. Kills not recording the resume timestamp, which is what tells a first
+    outage from a connection which cannot hold. The retry interval is *not* asserted
+    here: whether the first attempt of a cycle lands before or after the restart is a
+    race by construction, and the ladder itself is pinned without a subprocess above.
+    """
+    handle = player()
+    doc, stream = _open(manager, handle)
+    banners: set[int] = set()
+    notices: list[str] = []
+    doc.changed.connect(lambda d: notices.append(d.notice))
+    try:
+        for _ in range(3):
+            qtbot.waitUntil(lambda: doc.state == LIVE, timeout=60000)
+            qtbot.waitUntil(lambda: _has_data(doc), timeout=20000)
+            handle.kill()
+            qtbot.waitUntil(lambda: doc.state == INTERRUPTED, timeout=20000)
+            banners.add(id(doc._banner))
+            handle.start()
+        qtbot.waitUntil(lambda: doc.state == LIVE, timeout=60000)
+        assert len(banners) == 1  # one strip, ever
+        assert "Connection unstable" in notices
+    finally:
+        doc.teardown()
+        flush_deletes(doc)
