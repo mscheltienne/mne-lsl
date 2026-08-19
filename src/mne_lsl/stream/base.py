@@ -58,6 +58,10 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
         self._bufsize = bufsize
         self._lock = threading.Lock()
         self._callbacks = []
+        # exception which disconnected the stream, deliberately kept out of
+        # '_reset_variables' since the acquisition thread calls it to disconnect and the
+        # reason must survive that teardown to be readable afterwards.
+        self._disconnect_reason = None
 
     @copy_doc(ContainsMixin.__contains__)
     def __contains__(self, ch_type: str) -> bool:
@@ -348,6 +352,7 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
                 )
         self._acquisition_delay = acquisition_delay
         self._n_new_samples = 0
+        self._disconnect_reason = None  # a reconnection does not report the last loss
         self._executor = (
             None
             if self._acquisition_delay is None
@@ -429,8 +434,24 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
         -------
         stream : instance of ``Stream``
             The stream instance modified in-place.
+
+        Notes
+        -----
+        Idempotent: disconnecting an already disconnected stream is a no-op. The
+        acquisition thread resets the stream on an acquisition error, e.g. after a lost
+        stream, so a caller which owns the stream can always disconnect it.
+
+        The disconnection reason is deliberately **not** cleared here.
+        :meth:`~mne_lsl.stream.BaseStream.connect` already guarantees that a reconnected
+        stream reports no stale reason, which is the whole guarantee anyone needs, while
+        clearing it on the way out would erase a reason the acquisition thread had just
+        recorded -- it records the exception before it resets the stream, so there is a
+        window in which this method is reached with a fresh reason and a state which
+        still reads as connected.
         """
-        self._check_connected("disconnect()")
+        if not self.connected:
+            logger.debug("%s is already disconnected. Skipping.", self)
+            return self
         if hasattr(self, "_epochs") and len(self._epochs) != 0:
             warn(
                 "The stream will be disconnected while EpochsStream were still "
@@ -1366,19 +1387,32 @@ class BaseStream(ABC, ContainsMixin, SetChannelsMixin):
         """Connection status of the stream.
 
         :type: :class:`bool`
+
+        Notes
+        -----
+        A partially set state reads as not connected. The acquisition thread resets the
+        stream attribute by attribute, e.g. after a lost stream, so this property is
+        readable at any point of that teardown. A genuinely partial initialization is
+        reported by :meth:`~mne_lsl.stream.StreamLSL.get_data` and by the other methods
+        through a clear :class:`RuntimeError`.
         """
-        attributes = [
-            "_info",
-            "_buffer",
-            "_picks_inlet",
-            "_timestamps",
-        ]
-        if all(getattr(self, attr, None) is None for attr in attributes):
-            return False
-        else:
-            # sanity-check
-            assert not any(getattr(self, attr, None) is None for attr in attributes)
-            return True
+        attributes = ("_info", "_buffer", "_picks_inlet", "_timestamps")
+        return all(getattr(self, attr, None) is not None for attr in attributes)
+
+    @property
+    def disconnect_reason(self) -> BaseException | None:
+        """Exception which disconnected the stream, if any.
+
+        :type: :class:`BaseException` | None
+
+        Notes
+        -----
+        ``None`` while the stream is connected and after a clean call to
+        :meth:`~mne_lsl.stream.StreamLSL.disconnect`; the exception raised in the
+        acquisition thread when that thread disconnected the stream, e.g. a
+        ``LostError`` for a stream whose source went away.
+        """
+        return self._disconnect_reason
 
     @property
     def dtype(self) -> DTypeLike | None:
