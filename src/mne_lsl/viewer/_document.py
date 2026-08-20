@@ -328,8 +328,7 @@ class StreamDocument(ads.CDockWidget):
         blocked = self._freeze_button.blockSignals(True)
         self._freeze_button.setChecked(self._frozen)
         self._freeze_button.blockSignals(blocked)
-        self._refresh_freeze_ui()
-        self.changed.emit(self)
+        self.changed.emit(self)  # the indicator was refreshed by '_apply_clock'
 
     def _refresh_freeze_ui(self) -> None:
         """Label the freeze button with the action it performs and paint the indicator.
@@ -340,6 +339,11 @@ class StreamDocument(ads.CDockWidget):
         are never refreshed apart: a freeze and a theme flip each need the pair, and two
         copies of the condition are how a state ends up labelled 'Live' next to a frozen
         indicator.
+
+        The indicator reports what its tooltip promises -- whether the viewport advances
+        -- and an interrupted viewport does not, so the state overrides the label a
+        freeze alone would produce. Only the label: the button keeps offering the
+        operator's own toggle, which is a preference and takes effect on the resume.
         """
         palette = tokens(theme_controller.mode)
         if self._frozen:
@@ -348,6 +352,8 @@ class StreamDocument(ads.CDockWidget):
         else:
             glyph, label = "mdi6.pause", "Freeze"
             text, color = "● Live", palette.success
+        if self._state in (INTERRUPTED, MISMATCHED):
+            text, color = "■ Interrupted", palette.warning
         self._freeze_button.setIcon(icon(glyph))
         self._freeze_button.setText(label)
         # the glyph and the word are the cues which are not the color.
@@ -404,10 +410,17 @@ class StreamDocument(ads.CDockWidget):
         it was hidden otherwise: a laid-out :class:`~qtpy.QtWidgets.QSplitter` reports a
         hidden child as 0 wide, and saving that restores a panel the user cannot get
         back by toggling it.
+
+        A zero falls back to the recorded width for the same reason, one the hidden test
+        does not cover: a splitter lets its children collapse, so a panel the user
+        dragged to nothing is 0 wide while still perfectly *shown*. Persisting that
+        writes a configuration which opens with no Channels page, in every session it is
+        loaded, recoverable only by finding the handle again -- whereas the collapse it
+        came from lasts as long as the window and is undone by the toggle.
         """
         if not self.controller_visible:
             return self._panel_width
-        return self._splitter.sizes()[0]
+        return self._splitter.sizes()[0] or self._panel_width
 
     def set_controller_width(self, width: int) -> None:
         """Give the controller panel ``width`` pixels, the display taking the rest.
@@ -444,7 +457,13 @@ class StreamDocument(ads.CDockWidget):
         -----
         Nothing is read off the stream while it is disconnected: both
         :attr:`~mne_lsl.stream.BaseStream.info` and
-        :attr:`~mne_lsl.stream.BaseStream.n_buffer` raise there.
+        :attr:`~mne_lsl.stream.BaseStream.n_buffer` raise there. The connection and the
+        two fields it gates are read together, in one guarded block, *before* anything
+        is reported. The acquisition thread resets the stream on its own account, so a
+        check per field can answer differently per field, and a check made ahead of the
+        read races the read which follows it -- which would raise out of the status
+        bar's own slot. A read which fails is therefore a disconnection like any other,
+        and cannot leave the state claiming ``Connected • Live`` next to five ``—``.
 
         The connection state and the live fields are decided independently, and the
         state never blanks the others. A stalled document is still *connected*, so
@@ -460,13 +479,20 @@ class StreamDocument(ads.CDockWidget):
             "history": "—",
             "latency": "—",
         }
+        try:
+            connected = self._stream.connected
+            if connected:
+                sfreq = float(self._stream.info["sfreq"])
+                n_buffer = self._stream.n_buffer
+        except Exception as error:  # the acquisition thread reset it just now
+            logger.debug("The stream %s became unreadable: %s", self._identity, error)
+            connected = False
         if self._state in (INTERRUPTED, MISMATCHED):
             fields["state"] = f"Interrupted • {self._notice}"
-        elif self._stream.connected:
+        elif connected:
             fields["state"] = "Connected • " + ("Frozen" if self._frozen else "Live")
-        if not self._stream.connected:
+        if not connected:
             return fields
-        sfreq = float(self._stream.info["sfreq"])
         # The displayed count is what the viewport shows, not what the layout holds: a
         # stream with fewer channels than the row count shows all of them.
         fields["channels"] = (
@@ -474,7 +500,7 @@ class StreamDocument(ads.CDockWidget):
         )
         fields["sfreq"] = f"{sfreq:g} Hz"
         # no zero guard: the constructor refuses a stream declaring 'sfreq == 0'.
-        fields["history"] = f"{self._stream.n_buffer / sfreq:g} s history"
+        fields["history"] = f"{n_buffer / sfreq:g} s history"
         fields["latency"] = "No processing • 0 ms"
         return fields
 
@@ -550,7 +576,8 @@ class StreamDocument(ads.CDockWidget):
                 "visible": self.controller_visible,
                 "width": self.controller_width,
             },
-            "display": dict(self.trace.controls.state),
+            # already a fresh dict, see 'DisplayControls.state'
+            "display": self.trace.controls.state,
         }
         if order == self.model.acquisition_names():
             del state["channel_order"]  # omit what equals the default
@@ -1229,6 +1256,12 @@ class StreamDocument(ads.CDockWidget):
         fetch -- 30 ticks a second for the life of the document, and a viewport whose
         "frozen on the last frame" would then be an accident of that early return rather
         than a decision.
+
+        The toolbar indicator is refreshed from here as well, since every caller of this
+        method has just changed something the indicator reports and this is the one seam
+        they all pass through: a transition which updated the clock and forgot the
+        indicator left the toolbar claiming ``● Live`` over a viewport frozen on its
+        last frame, for the rest of the outage.
         """
         if self._torn:
             return
@@ -1237,6 +1270,7 @@ class StreamDocument(ads.CDockWidget):
             self.trace.stop()
         else:
             self.trace.start()
+        self._refresh_freeze_ui()
 
     # -- the model -> display edge -----------------------------------------------------
     def _push_layout(self) -> None:

@@ -885,6 +885,39 @@ def test_polled_is_emitted_on_every_branch(
     assert len(ticks) == 1
 
 
+def test_poll_survives_a_stream_reset_under_the_fetch(
+    display: TraceDisplay,
+    push: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a stream lost under the fetch ends the tick instead of raising out.
+
+    The connection guard cannot cover the read which follows it: the acquisition thread
+    resets the stream on its own account, so a source lost in between raises out of a
+    'QTimer' slot 30 times a second, for a routine disconnection the next tick handles
+    on the guard. A failure over a stream which is *still* connected is re-raised
+    instead, which is the half a bare 'except' would swallow -- it is the one 'get_data'
+    logs a bug report for.
+    """
+    push(50)
+    display._render()
+
+    def _raise(winsize=None, picks=None, exclude="bads"):
+        raise RuntimeError("The Stream is not connected.")
+
+    monkeypatch.setattr(display._stream, "get_data", _raise)
+    with pytest.raises(RuntimeError, match="not connected"):
+        display._render()
+
+    def _lose(winsize=None, picks=None, exclude="bads"):
+        display._stream.disconnect()  # the reset lands between the guard and the read
+        raise RuntimeError("The Stream is not connected.")
+
+    monkeypatch.setattr(display._stream, "get_data", _lose)
+    display._render()
+    assert not display._stream.connected
+
+
 def test_last_timestamp(display: TraceDisplay, push: Callable[..., None]) -> None:
     """Test the newest timestamp of the last fetched window, over its three states.
 

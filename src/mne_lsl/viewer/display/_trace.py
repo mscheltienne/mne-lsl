@@ -883,6 +883,13 @@ class TraceDisplay(QWidget):
         every path which reads the buffer goes through here: a suspended display may not
         read it at all, see :meth:`suspend`, and a disconnected one has nothing to read.
 
+        The connection guard is not enough on its own, which is what the ``try`` covers:
+        the acquisition thread resets the stream on its own account, so a source lost
+        between the guard and the read below raises ``RuntimeError`` from inside a
+        ``QTimer`` slot. It is re-raised for a stream which is still connected, so a
+        genuine failure -- the one ``get_data`` logs a bug report for -- is never
+        swallowed; the tick which follows takes the guard instead.
+
         The un-filled part of a buffer is drawn as ``NaN`` rather than as samples, see
         the comment in the body: that is what puts a visible gap where no data exists.
         """
@@ -892,11 +899,17 @@ class TraceDisplay(QWidget):
             # 'get_data(picks=[])' raises *and* logs an error asking for a bug report,
             # which at 30 Hz would fill the terminal.
             return
-        # An irregularly-sampled stream declares 'sfreq == 0', and 'get_data' then reads
-        # 'winsize' as a *sample count* rather than as seconds, so a float raises. The
-        # whole buffer is fetched instead and the fixed [0, W] mapping below clips it.
-        winsize = self._winsize if self._stream.info["sfreq"] else None
-        data, ts = self._stream.get_data(winsize, picks=self._picks, exclude=())
+        try:
+            # An irregularly-sampled stream declares 'sfreq == 0', and 'get_data' then
+            # reads 'winsize' as a *sample count* rather than as seconds, so a float
+            # raises. The whole buffer is fetched instead and the fixed [0, W] mapping
+            # below clips it.
+            winsize = self._winsize if self._stream.info["sfreq"] else None
+            data, ts = self._stream.get_data(winsize, picks=self._picks, exclude=())
+        except RuntimeError:
+            if self._stream.connected:
+                raise  # see the note above
+            return
         # 'exclude' documents the intent only: integer picks bypass it entirely. 'picks'
         # is never 'None', which costs ~140x more to resolve.
         self._last_ts = float(ts[-1])

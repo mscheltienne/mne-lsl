@@ -938,6 +938,9 @@ class ChannelModel(QAbstractListModel):
         if not self._stream.connected:
             return
         if len(self._stream.info.ch_names) == len(self._rows):
+            # no empty-model guard: the rows are empty only while the stream is
+            # disconnected, which the check above already returned on, and a connected
+            # stream never reports zero channels.
             self._read_stream()
             self._emit_metadata(0, len(self._rows) - 1)
             return

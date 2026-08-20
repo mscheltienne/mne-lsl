@@ -347,6 +347,33 @@ def test_freeze(
     assert seen == [doc, doc]
 
 
+def test_indicator_stops_claiming_live_when_interrupted(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that the indicator follows the connection state, not the freeze alone.
+
+    Its tooltip promises it reports whether the viewport advances, and an interrupted
+    viewport does not -- 'MISMATCHED' stops the clock outright. A green '● Live' over a
+    viewport frozen on its last frame is the toolbar contradicting the banner directly
+    above it, for the rest of the outage.
+
+    The button keeps offering the operator's own toggle, which is a preference and
+    applies on the resume: relabelling it here is what would take that away.
+    """
+    doc, _, _ = document()
+    assert doc._indicator.text() == "● Live"
+
+    doc._enter(INTERRUPTED, "Stream lost")
+    assert doc._indicator.text() == "■ Interrupted"
+    assert doc._freeze_button.text() == "Freeze"
+
+    doc._enter(MISMATCHED, "The channels changed")
+    assert doc._indicator.text() == "■ Interrupted"
+
+    doc._go_live(time.monotonic())
+    assert doc._indicator.text() == "● Live"
+
+
 def test_freeze_button_round_trip(
     document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
 ) -> None:
@@ -457,6 +484,35 @@ def test_controller_visible(
     assert doc._splitter.sizes() == before
 
 
+def test_controller_width_of_a_collapsed_panel(
+    app: QApplication,
+    manager: ads.CDockManager,
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+) -> None:
+    """Test that a panel dragged to nothing is not what a configuration saves.
+
+    A splitter lets its children collapse, so this one can be dragged to zero while
+    staying perfectly *shown* -- the hidden-panel fallback does not cover it. Saving the
+    zero writes a configuration which opens with no Channels page in every session which
+    loads it, while the collapse it came from lasts as long as the window.
+    """
+    doc, _, _ = document()
+    _dock(manager, doc)
+    manager.window().show()
+    app.processEvents()
+    assert doc._splitter.sizes()[0] > 0
+
+    doc._splitter.setSizes([0, sum(doc._splitter.sizes())])  # dragged onto the edge
+    app.processEvents()
+    assert doc.controller_visible  # shown, and 0 wide
+    assert doc._splitter.sizes()[0] == 0
+    assert doc.controller_width == doc._panel_width > 0
+    assert doc.capture_state()["controller"] == {
+        "visible": True,
+        "width": doc._panel_width,
+    }
+
+
 def test_controller_button_round_trip(
     document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
 ) -> None:
@@ -509,6 +565,31 @@ def test_status_fields_disconnected(
     stream.disconnect()
     fields = doc.status_fields()
     assert set(fields) == _FIELDS
+    assert fields["state"] == "Disconnected"
+    for key in ("channels", "sfreq", "history", "latency"):
+        assert fields[key] == "—", key
+
+
+def test_status_fields_unreadable_under_the_read(
+    document: Callable[..., tuple[StreamDocument, StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a stream reset under the read is reported as the disconnection it is.
+
+    'connected' answers off the private attributes, so it is still True while the
+    acquisition thread is part-way through clearing them and the read which follows
+    raises anyway -- out of the status bar's own slot. Kills both halves: dropping the
+    guard, and reporting the state before the read, which claims 'Connected • Live' next
+    to five blanks.
+    """
+    doc, stream, _ = document()
+
+    def _raise(self) -> None:
+        raise RuntimeError("The Stream is not connected.")
+
+    monkeypatch.setattr(type(stream), "info", property(_raise))
+    assert stream.connected  # the attributes the property reads are still set
+    fields = doc.status_fields()
     assert fields["state"] == "Disconnected"
     for key in ("channels", "sfreq", "history", "latency"):
         assert fields[key] == "—", key

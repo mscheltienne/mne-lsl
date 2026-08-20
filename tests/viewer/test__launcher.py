@@ -236,10 +236,17 @@ def test_selection_changed_emitted(
     Without the first the 'Open selected' action stays disabled forever; without the
     second the window never re-evaluates it over the table a discovery pass replaced.
 
-    The rebuild is asserted with **nothing selected**, and at an unchanged row count: Qt
-    emits 'itemSelectionChanged' by itself whenever it drops rows out of a selection --
-    measured twice for a rebuild under a live selection, never for one under an empty
-    selection -- so any other shape passes with the page's own emission deleted.
+    The rebuild is asserted first with **nothing selected**, and at an unchanged row
+    count: Qt emits 'itemSelectionChanged' by itself whenever it drops rows out of a
+    selection -- measured twice for a rebuild under a live selection, never for one
+    under an empty selection -- so that shape alone would pass with the page's own
+    emission deleted.
+
+    Then under a live selection, which is where those extra emissions come from and
+    where the re-anchoring adds one more per matching row: the count is still exactly
+    one, since the rebuild blocks the table's own signals. Without that the window
+    re-evaluates its Open action -- re-materializing every selected index to do it --
+    once per selected stream on every discovery pass.
     """
     page.set_streams([descriptor(name="stream-0"), descriptor(name="stream-1")])
     seen: list[int] = []
@@ -247,6 +254,11 @@ def test_selection_changed_emitted(
     _select(page, 1)
     assert len(seen) == 1
     page._table.clearSelection()
+    seen.clear()
+    page.set_streams([descriptor(name="other-0"), descriptor(name="other-1")])
+    assert len(seen) == 1
+
+    _select(page, 0, 1)
     seen.clear()
     page.set_streams([descriptor(name="other-0"), descriptor(name="other-1")])
     assert len(seen) == 1
@@ -368,9 +380,14 @@ def test_card_removed_when_the_configuration_vanishes(page: EmptyStatePage) -> N
         [_state("one", STATE_AVAILABLE), _state("two", STATE_INVALID)]
     )
     assert page.configuration_names() == ("one", "two")
+    card = page._cards["one"]
     page.set_configurations([_state("two", STATE_INVALID)])
     assert page.configuration_names() == ("two",)
     assert "one" not in page._cards
+    # asserted before the deferred deletion is flushed, which is the whole window the
+    # card is visible in: 'removeWidget' takes a widget out of the layout and leaves it
+    # shown, painting at its last geometry over the cards re-sorted underneath it.
+    assert card.isHidden()
 
 
 def test_card_group_order(page: EmptyStatePage) -> None:

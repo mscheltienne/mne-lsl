@@ -508,6 +508,11 @@ class EmptyStatePage(QWidget):
             if name not in wanted:
                 card = self._cards.pop(name)
                 self._cards_box.removeWidget(card)
+                # hidden as well: 'removeWidget' takes a widget out of the layout and
+                # leaves it shown at its last geometry, so the card of a configuration
+                # which vanished keeps painting over its neighbours until the deferred
+                # deletion is delivered.
+                card.hide()
                 card.deleteLater()
         for name, state in wanted.items():
             card = self._cards.get(name)
@@ -576,30 +581,41 @@ class EmptyStatePage(QWidget):
         highlight on a different stream than the user picked -- and the window would
         then connect that one, with nothing on screen signalling the switch. An identity
         which the pass no longer reports simply loses its selection.
+
+        The table's own signals are blocked for the whole rebuild, which is what makes
+        the single emission at the end of this method the *only* one: Qt reports the
+        rows it drops out of a live selection, and re-anchoring is one ``select()`` per
+        matching row, so the window would otherwise re-evaluate its Open action -- and
+        re-materialize every selected index to do it -- once per selected stream, on
+        every discovery pass.
         """
         regular = [descriptor for descriptor in descriptors if descriptor.sfreq != 0]
         events = [descriptor for descriptor in descriptors if descriptor.sfreq == 0]
         selected = {descriptor.identity for descriptor in self.selected_descriptors()}
-        self._descriptors = regular
-        self._table.setRowCount(len(regular))
-        for row, descriptor in enumerate(regular):
-            identity = descriptor.identity
-            values = (
-                identity.name,
-                identity.stype,
-                identity.source_id,
-                str(descriptor.n_channels),
-                f"{descriptor.sfreq:g}",
-                descriptor.hostname,
-            )
-            for column, value in enumerate(values):
-                item = QTableWidgetItem(value)
-                if column == 0:
-                    font = QFont(item.font())
-                    font.setBold(True)
-                    item.setFont(font)
-                self._table.setItem(row, column, item)
-        self._select_identities(selected)
+        blocked = self._table.blockSignals(True)
+        try:
+            self._descriptors = regular
+            self._table.setRowCount(len(regular))
+            for row, descriptor in enumerate(regular):
+                identity = descriptor.identity
+                values = (
+                    identity.name,
+                    identity.stype,
+                    identity.source_id,
+                    str(descriptor.n_channels),
+                    f"{descriptor.sfreq:g}",
+                    descriptor.hostname,
+                )
+                for column, value in enumerate(values):
+                    item = QTableWidgetItem(value)
+                    if column == 0:
+                        font = QFont(item.font())
+                        font.setBold(True)
+                        item.setFont(font)
+                    self._table.setItem(row, column, item)
+            self._select_identities(selected)
+        finally:
+            self._table.blockSignals(blocked)
         if events:
             names = ", ".join(descriptor.identity.name for descriptor in events)
             text = f"Event sources (not openable as a document): {names}"

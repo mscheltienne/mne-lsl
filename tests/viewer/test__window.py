@@ -391,6 +391,32 @@ def test_on_connected_releases_a_duplicate(
     assert first.connected
 
 
+def test_on_connected_releases_a_document_which_refuses_to_build(
+    window: ViewerWindow,
+    lsl_stream: Callable[..., tuple[StreamLSL, Callable[..., None]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a construction which raises releases the stream it was handed.
+
+    Reachable: the document refuses a stream declaring no sampling rate, and a source
+    re-provisioned as an event stream between the discovery pass and this connection
+    arrives here as exactly that. The exception escapes into a Qt slot, where the policy
+    logs it and carries on -- so without the guard the connected inlet and its
+    acquisition thread stay alive, unreferenced, for the life of the process.
+    """
+    stream, _ = lsl_stream()
+    descriptor = _descriptor_for(stream)
+
+    def _raise(*args: object, **kwargs: object) -> None:
+        raise ValueError("an irregularly sampled stream cannot be displayed")
+
+    monkeypatch.setattr(_window, "StreamDocument", _raise)
+    window._on_connected(descriptor, stream)
+    assert window.documents == ()
+    assert not stream.connected
+    assert "Could not open" in window.statusBar().currentMessage()
+
+
 def test_documents_tab_together(
     window: ViewerWindow,
     lsl_stream: Callable[..., tuple[StreamLSL, Callable[..., None]]],

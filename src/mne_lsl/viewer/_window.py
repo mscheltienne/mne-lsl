@@ -887,25 +887,41 @@ class ViewerWindow(QMainWindow):
         return doc
 
     def _on_connected(self, descriptor: object, stream: object) -> None:
-        """Open a document for a stream which just connected."""
+        """Open a document for a stream which just connected.
+
+        Notes
+        -----
+        Both exits release the stream. The connector transfers its ownership with this
+        signal, so every path which does not hand it to a document has to disconnect it
+        or it leaks a live inlet and its acquisition thread for the life of the process.
+        The construction is guarded for the same reason: it refuses a stream declaring
+        no sampling rate -- reachable when a source was re-provisioned as an event
+        stream between the discovery pass and this connection -- and it reads the
+        stream, which raises if the source went away again in the meantime.
+        """
         identity = descriptor.identity
         self._connecting.pop(identity, None)
         self._batch_step()
         if self._document_for(identity) is not None:
-            # The connector transferred the ownership of the stream with its signal,
-            # thus returning without disconnecting leaks a live inlet and its
-            # acquisition thread for the life of the process.
             logger.warning(
                 "A document is already open for the stream %s; releasing the stream "
                 "which just connected.",
                 identity.as_tuple(),
             )
-            try:
-                stream.disconnect()
-            except Exception as error:  # deliberately broad, as in the teardown path
-                logger.warning("Could not release a duplicate stream: %s", error)
+            release_stream(stream)
             return
-        self._register(StreamDocument(self._manager, stream, identity))
+        try:
+            doc = StreamDocument(self._manager, stream, identity)
+        except Exception as error:  # deliberately broad, see the note above
+            logger.warning(
+                "Could not open a document for the stream %s: %s",
+                identity.as_tuple(),
+                error,
+            )
+            release_stream(stream)
+            self.statusBar().showMessage(f"Could not open {identity.name}: {error}")
+            return
+        self._register(doc)
 
     def _on_failed(self, descriptor: object, message: str) -> None:
         """Report a connection which failed, leaving the open documents untouched."""
@@ -1842,10 +1858,10 @@ class ViewerWindow(QMainWindow):
 
         ponytail: the closed dock widget stays in the manager's map, so one document's
         widget tree -- its curve pool, its model and its page -- lives on for the
-        process, per closed document. The upgrade is ``removeDockWidget`` plus
-        ``deleteLater`` from here, which leaves an invalid Python wrapper behind and is
-        therefore conditioned on the PySide6 job being green first. Note
-        ``deleteDockWidget`` does not exist in the PyQt6 distribution.
+        process, per closed document. The upgrade is ``deleteDockWidget`` from here, the
+        call :meth:`_purge_closed_documents` already makes at load time, which leaves an
+        invalid Python wrapper behind and is therefore conditioned on the PySide6 job
+        being green first.
         """
         if doc in self._documents:
             self._documents.remove(doc)
