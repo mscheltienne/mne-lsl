@@ -12,9 +12,9 @@ from qtpy.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QScrollArea,
-    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QToolButton,
@@ -53,11 +53,12 @@ PROGRESS_TEXT = {
 }
 # Column headers of the available-stream table, in order.
 _COLUMNS = ("Name", "Type", "Source ID", "Channels", "Rate (Hz)", "Host")
-# The table is height-capped and scrolls, so the region stays compact instead of a
-# large, mostly empty table stretching to fill the page.
-_TABLE_MAX_H = 210
 # Maximum width of the centred content column.
 _COLUMN_MAX_W = 820
+# Default width of the source-ID column, which is a uuid more often than not: sized so
+# one fits, interactive so a user can widen it, and never 'ResizeToContents', which a
+# long source ID turns into a horizontal scrollbar over every other column.
+_SOURCE_ID_W = 220
 # The card region scrolls past this height, so that a long list of saved configurations
 # cannot push the available-stream table off the page.
 #
@@ -405,7 +406,8 @@ class EmptyStatePage(QWidget):
         font.setBold(True)
         title.setFont(font)
         subtitle = QLabel(
-            "Select one or more streams and open them; each opens its own document."
+            "Click a stream to select it, click again to deselect. Each selected "
+            "stream opens its own document."
         )
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet("color: palette(mid);")
@@ -422,11 +424,6 @@ class EmptyStatePage(QWidget):
         # auto-detects rich text and has no format of its own.
         self._events_label.setTextFormat(Qt.TextFormat.PlainText)
         self._events_label.setStyleSheet("color: palette(mid);")
-        streams_group = QGroupBox("Available streams")
-        streams_box = QVBoxLayout(streams_group)
-        streams_box.setSpacing(6)
-        streams_box.addWidget(self._table)
-        streams_box.addWidget(self._events_label)
 
         content = QWidget()
         content.setMaximumWidth(_COLUMN_MAX_W)
@@ -438,14 +435,21 @@ class EmptyStatePage(QWidget):
         # the saved workspaces come first: reopening one is the gesture a returning user
         # is here for, while picking streams by hand is how a new one is built.
         column.addWidget(self._build_cards_region())
-        column.addWidget(streams_group)
-        column.addStretch(1)
+        column.addWidget(self._table, 1)
+        column.addWidget(self._events_label)
+        # keeps the empty page top-aligned: with the table hidden, this spacer is what
+        # absorbs the height instead of three labels spreading down 800 px.
+        column.addStretch()
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(28, 24, 28, 24)
-        outer.addStretch(1)
-        outer.addWidget(content)
-        outer.addStretch(1)
+        # Stretch 0 on the spacers and 1 on the column: a stretch>0 spacer takes the
+        # extra width before the column does, which is what pinned the whole page to a
+        # ~300 px sizeHint and left '_COLUMN_MAX_W' unreachable. The spacers keep their
+        # 'Expanding' policy, so they still centre the column once it clamps.
+        outer.addStretch()
+        outer.addWidget(content, 1)
+        outer.addStretch()
 
         self.set_progress("checking")  # never an empty label before the first pass
         self.set_streams([])  # the fallback text of the event line, from the same path
@@ -555,12 +559,27 @@ class EmptyStatePage(QWidget):
         table.setHorizontalHeaderLabels(_COLUMNS)
         table.verticalHeader().setVisible(False)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        # A plain left click toggles one row, with no modifier: the page exists to build
+        # a multi-selection, and 'ExtendedSelection' makes the second stream cost a
+        # Cmd-click nobody discovers. The cost is that Shift+click no longer extends a
+        # range -- it toggles the clicked row like any other click. Note that this also
+        # makes every *programmatic* view-level call a toggle: 'selectRow' and
+        # 'setCurrentIndex' no longer clear first, which is why the page selects through
+        # the selection model with explicit flags instead.
+        #
+        # ponytail: a checkbox column is the upgrade if the toggle proves undiscoverable
+        # in use; it adds a check state the selection highlight can disagree with.
+        table.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.horizontalHeader().setStretchLastSection(True)
-        table.setColumnWidth(0, 160)
-        table.setMaximumHeight(_TABLE_MAX_H)
-        table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
+        header = table.horizontalHeader()
+        # Stretch on Name rather than 'setStretchLastSection', which hands the slack to
+        # Host and leaves Name at a fixed default -- the permanent horizontal scrollbar
+        # this replaces.
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for column in (1, 3, 4, 5):
+            header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
+        header.resizeSection(2, _SOURCE_ID_W)
         table.itemSelectionChanged.connect(self.selection_changed)
         table.itemDoubleClicked.connect(self._on_double_click)
         return table
@@ -593,6 +612,12 @@ class EmptyStatePage(QWidget):
         events = [descriptor for descriptor in descriptors if descriptor.sfreq == 0]
         selected = {descriptor.identity for descriptor in self.selected_descriptors()}
         blocked = self._table.blockSignals(True)
+        # Hidden for the fill, and shown again below: the four 'ResizeToContents'
+        # columns recompute on every 'setItem', and each walks *every* row, so a
+        # visible table rebuilds in time quadratic in the row count -- 51 ms at 30
+        # streams and 531 ms at 100, against 0.7 and 2.1 ms hidden. Blocking the signals
+        # does not cover it: a header resize is not a signal.
+        self._table.setVisible(False)
         try:
             self._descriptors = regular
             self._table.setRowCount(len(regular))
@@ -608,6 +633,9 @@ class EmptyStatePage(QWidget):
                 )
                 for column, value in enumerate(values):
                     item = QTableWidgetItem(value)
+                    # a tooltip always auto-detects rich text whatever the item was
+                    # told, and a stream name is remote input -- hence escaped.
+                    item.setToolTip(escape(value))
                     if column == 0:
                         font = QFont(item.font())
                         font.setBold(True)
@@ -616,15 +644,25 @@ class EmptyStatePage(QWidget):
             self._select_identities(selected)
         finally:
             self._table.blockSignals(blocked)
+        # A 0-row grid states nothing the progress label right above does not already
+        # say -- "Checking for streams…", "No streams found", or the failure.
+        self._table.setVisible(bool(regular))
         if events:
             names = ", ".join(descriptor.identity.name for descriptor in events)
-            text = f"Event sources (not openable as a document): {names}"
+            # 'Discovery' calls a pass which found only event sources 'updated', since
+            # it counts them as streams, so the progress label reads "Updated just now"
+            # over a table that just vanished. This line is the only one which knows the
+            # split, thus it is the one which says so.
+            found = "Event sources" if regular else "Only event sources found"
+            text = f"{found} (not openable as a document): {names}"
         else:
-            text = "No event sources discovered."
+            text = ""  # hidden below, thus only cleared: no stale name behind the line
         self._events_label.setText(text)
         # Elided in place, thus the tooltip is the only way back to the full text -- and
         # escaped, as a tooltip renders markup whatever the label was told.
         self._events_label.setToolTip(escape(text))
+        # shown only when there is a name to give
+        self._events_label.setVisible(bool(events))
         # The table was rebuilt under the selection, thus the window has to re-evaluate
         # its Open action even though no user interaction took place.
         self.selection_changed.emit()

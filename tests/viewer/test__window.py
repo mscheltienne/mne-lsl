@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
-from qtpy.QtCore import QRect
+from qtpy.QtCore import QItemSelectionModel, QRect
 from qtpy.QtGui import QGuiApplication
 from qtpy.QtWidgets import QInputDialog, QMessageBox
 
@@ -538,11 +538,20 @@ def test_open_action_tracks_selection(
 
     A discovery pass rebuilds the table under the selection, thus the action has to be
     re-evaluated with no user interaction at all.
+
+    The row is selected through the selection model, as the page does. 'selectRow' obeys
+    the selection *mode*, so under 'MultiSelection' it toggles rather than selects and a
+    second call would silently deselect the row again.
     """
+    table = window._landing._table
     assert not window._act_open.isEnabled()
     window._on_streams_found([descriptor(name="a"), descriptor(name="b")])
     assert not window._act_open.isEnabled()
-    window._landing._table.selectRow(0)
+    table.selectionModel().select(
+        table.model().index(0, 0),
+        QItemSelectionModel.SelectionFlag.Select
+        | QItemSelectionModel.SelectionFlag.Rows,
+    )
     assert window._act_open.isEnabled()
     window._on_streams_found([])
     assert not window._act_open.isEnabled()

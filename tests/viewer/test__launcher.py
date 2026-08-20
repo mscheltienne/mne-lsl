@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from qtpy.QtCore import QEvent, QItemSelectionModel, QPointF, Qt
 from qtpy.QtGui import QKeyEvent, QMouseEvent
+from qtpy.QtTest import QTest
 from qtpy.QtWidgets import QAbstractItemView
 
 import mne_lsl.viewer._launcher
@@ -71,8 +72,9 @@ def page(flush_deletes: Callable[..., None]) -> Generator[EmptyStatePage]:
 def _select(page: EmptyStatePage, *rows: int) -> None:
     """Select ``rows`` of the stream table, in the order given.
 
-    Through the selection model rather than 'selectRow', which clears the selection
-    first and so can never build the multi-selection the page exists to serve.
+    Through the selection model with explicit flags, which is what the page itself does:
+    it bypasses the selection *mode*, whereas 'selectRow' obeys it and so toggles under
+    'MultiSelection' -- selecting the same row twice would deselect it.
     """
     table = page._table
     table.clearSelection()
@@ -84,12 +86,41 @@ def _select(page: EmptyStatePage, *rows: int) -> None:
         table.selectionModel().select(table.model().index(row, 0), flags)
 
 
+def _shown(page: EmptyStatePage, width: int, height: int) -> None:
+    """Show ``page`` offscreen at one size, with its layout applied.
+
+    A layout which was never activated reports the geometry a widget had before it was
+    ever shown, thus every geometry assertion below would read a stale number -- and
+    'visualRect' an empty rectangle. Offscreen and with no event loop: the platform
+    comes from this package's conftest and the fixture closes the page.
+    """
+    page.resize(width, height)
+    page.show()
+    page.layout().activate()
+
+
+def _click_row(page: EmptyStatePage, row: int) -> None:
+    """Left-click the first cell of ``row``, with no modifier, as a user would.
+
+    Through 'QTest' rather than the selection model, which ignores the selection *mode*:
+    the mode is precisely what decides whether a plain click toggles the row or replaces
+    the whole selection with it.
+    """
+    table = page._table
+    QTest.mouseClick(
+        table.viewport(),
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        table.visualRect(table.model().index(row, 0)).center(),
+    )
+
+
 def test_empty_page(page: EmptyStatePage) -> None:
     """Test that a fresh page shows no stream and is never blank while it waits."""
     assert page._table.rowCount() == 0
     assert page.selected_descriptors() == []
     assert page._progress.text() == PROGRESS_TEXT["checking"]
-    assert page._events_label.text() == "No event sources discovered."
+    assert page._events_label.text() == ""
 
 
 def test_set_streams_lists_regular_only(
@@ -114,7 +145,7 @@ def test_set_streams_lists_regular_only(
         assert name in page._events_label.text()
     assert page._events_label.toolTip() == page._events_label.text()
     page.set_streams(regular)
-    assert page._events_label.text() == "No event sources discovered."
+    assert page._events_label.text() == ""
 
 
 def test_set_streams_columns(
@@ -190,10 +221,15 @@ def test_event_source_names_are_never_markup(
     A name is remote input and the line is a 'QLabel', i.e. 'AutoText' by default: a
     source named '<!--' erases every name after it from what is rendered, and '<b>x</b>'
     shows as 'x', so the name on screen is not the one published. A tooltip has no
-    format of its own and always auto-detects rich text, hence the escaping.
+    format of its own and always auto-detects rich text, hence the escaping -- which the
+    table item needs too, as its own tooltip is the only way back to an elided name.
     """
     page.set_streams(
-        [descriptor(name="<!--", sfreq=0.0), descriptor(name="<b>x</b>", sfreq=0.0)]
+        [
+            descriptor(name="<!--", sfreq=0.0),
+            descriptor(name="<b>x</b>", sfreq=0.0),
+            descriptor(name="<b>x</b>"),
+        ]
     )
     assert page._events_label.textFormat() == Qt.TextFormat.PlainText
     assert "<!--" in page._events_label.text()
@@ -201,6 +237,8 @@ def test_event_source_names_are_never_markup(
     assert "&lt;!--" in page._events_label.toolTip()
     assert "&lt;b&gt;x&lt;/b&gt;" in page._events_label.toolTip()
     assert "<b>" not in page._events_label.toolTip()
+    assert page._table.item(0, 0).text() == "<b>x</b>"
+    assert page._table.item(0, 0).toolTip() == "&lt;b&gt;x&lt;/b&gt;"
 
 
 def test_selected_descriptors_row_order(
@@ -218,9 +256,7 @@ def test_selected_descriptors_row_order(
     events = [descriptor(name="marker", sfreq=0.0)]
     regular = [descriptor(name=f"stream-{index}") for index in range(3)]
     page.set_streams([*events, *regular])
-    assert (
-        page._table.selectionMode() == QAbstractItemView.SelectionMode.ExtendedSelection
-    )
+    assert page._table.selectionMode() == QAbstractItemView.SelectionMode.MultiSelection
     _select(page, 2, 0)
     selected = page.selected_descriptors()
     assert selected == [regular[0], regular[2]]
@@ -313,6 +349,116 @@ def test_launcher_is_passive(
     imports, identifiers = module_scan(mne_lsl.viewer._launcher)
     segments = {segment for path in imports for segment in path.split(".")}
     assert (segments | identifiers).isdisjoint(_FORBIDDEN)
+
+
+def test_content_column_fills_the_window(
+    page: EmptyStatePage, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that the centred column grows to its maximum instead of to its size hint.
+
+    A widget added with stretch 0 between two stretch-1 spacers never gets a pixel of
+    the extra width: the spacers take it first, so the column stays at its ~300 px size
+    hint whatever maximum it was given, and the table inside it is horizontally scrolled
+    forever. The column is asserted to stop at its maximum rather than to fill the
+    window, since a full-bleed table leaves the title stranded at 1400 px.
+    """
+    page.set_streams([descriptor(name="stream-0")])
+    _shown(page, 1400, 850)
+    assert page._table.width() > 700, page._table.width()
+    assert page._table.parentWidget().width() == mne_lsl.viewer._launcher._COLUMN_MAX_W
+
+
+def test_every_column_is_visible(
+    page: EmptyStatePage, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that all six columns fit, with the name absorbing the slack.
+
+    A source ID is a uuid more often than not, so sizing that column to its content
+    pushes the last columns out of the view -- and 'setStretchLastSection' hands the
+    slack to Host, leaving the one column a user reads the row by at its fixed default.
+    The scroll *range* is what carries "no horizontal scrollbar": the visibility flag of
+    a scroll bar lags an event-loop pass behind a resize, which this suite never runs.
+    """
+    source_id = "0f9a0f2e-6c4f-4a5e-9a1a-2b3c4d5e6f70"
+    page.set_streams([descriptor(name="stream-0", source_id=source_id)])
+    _shown(page, 1400, 850)
+    header = page._table.horizontalHeader()
+    assert page._table.horizontalScrollBar().maximum() == 0
+    assert header.sectionSize(0) > header.sectionSize(5), header.sectionSize(0)
+    # the ID keeps its fixed default: sizing it to a uuid is what eats the row
+    assert header.sectionSize(2) == mne_lsl.viewer._launcher._SOURCE_ID_W
+
+
+def test_table_fills_the_page_and_hides_when_empty(
+    page: EmptyStatePage, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that the table takes the free height, and vanishes with nothing to show.
+
+    A height-capped table leaves the bottom half of the page empty on any real window,
+    while a 0-row grid states nothing the progress label right above it does not already
+    say -- and the trailing spacer is what keeps that label at the top of the page
+    rather than pushed halfway down 850 px of nothing. The empty page is asserted as it
+    is first shown, since that is the state every launch starts in and the only one
+    where the spacer has the whole page to absorb.
+    """
+    _shown(page, 1400, 850)
+    assert not page._table.isVisibleTo(page)
+    assert page._progress.y() < 200, page._progress.y()
+    page.set_streams([descriptor(name="stream-0"), descriptor(name="stream-1")])
+    page.layout().activate()
+    assert page._table.height() > 400, page._table.height()
+    assert page._table.isVisibleTo(page)
+    page.set_streams([])
+    page.layout().activate()
+    assert not page._table.isVisibleTo(page)
+
+
+def test_event_line_hidden_without_event_sources(
+    page: EmptyStatePage, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that the event line shows up only when there is an event source to name.
+
+    'No event sources' is the normal case and states nothing actionable, so it is a
+    permanent line of noise under the table. The text is cleared rather than kept, thus
+    the hidden line can never carry the names of a previous pass. A pass which found
+    *only* event sources says so, since discovery calls that one 'updated' and the
+    progress label above would otherwise read "Updated just now" over an empty page.
+    """
+    page.set_streams([descriptor(name="stream-0")])
+    assert not page._events_label.isVisibleTo(page)
+    assert page._events_label.text() == ""
+    page.set_streams([descriptor(name="stream-0"), descriptor(name="mrk", sfreq=0.0)])
+    assert page._events_label.isVisibleTo(page)
+    assert page._events_label.text().startswith("Event sources")
+    assert "mrk" in page._events_label.text()
+    page.set_streams([descriptor(name="mrk", sfreq=0.0)])
+    assert page._events_label.isVisibleTo(page)
+    assert page._events_label.text().startswith("Only event sources found")
+    page.set_streams([descriptor(name="stream-0")])
+    assert not page._events_label.isVisibleTo(page)
+
+
+def test_plain_click_toggles_one_row(
+    page: EmptyStatePage, descriptor: Callable[..., StreamDescriptor]
+) -> None:
+    """Test that a plain click adds a stream to the selection, and a second removes it.
+
+    The page exists to build a multi-selection, and under 'ExtendedSelection' the second
+    stream costs a modifier nobody discovers: the click below would replace the
+    selection instead of extending it. The selection-mode equality assertion alone
+    passes for any value someone types, hence the gesture.
+    """
+    streams = [descriptor(name=f"stream-{index}") for index in range(3)]
+    page.set_streams(streams)
+    _shown(page, 900, 700)
+    _click_row(page, 0)
+    assert page.selected_descriptors() == [streams[0]]
+    _click_row(page, 1)
+    assert page.selected_descriptors() == [streams[0], streams[1]]
+    _click_row(page, 1)  # the same row again: toggles off, with no modifier
+    assert page.selected_descriptors() == [streams[0]]
+    _click_row(page, 0)
+    assert page.selected_descriptors() == []
 
 
 # -- the saved-configuration cards -----------------------------------------------------
