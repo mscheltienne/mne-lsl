@@ -208,7 +208,7 @@ def install_exception_policy() -> None:
     Notes
     -----
     Replacing :data:`sys.excepthook` is sufficient to obtain one behaviour on both
-    bindings, the traceback logged at the ERROR level and the event loop kept alive.
+    bindings, the traceback logged at the CRITICAL level and the event loop kept alive.
     PyQt6 aborts only while the hook is *identically* :data:`sys.__excepthook__`, thus
     assigning any other callable, even one which merely re-implements the default,
     disarms the abort. No slot-wrapping decorator is needed. Verified across a matrix of

@@ -43,9 +43,9 @@ test = [
 ]
 # 'pytest-qt' is an entry-point plugin: pytest imports it before any conftest runs and
 # it aborts collection outright when no Qt binding is installed, which no
-# 'collect_ignore_glob' can prevent. It therefore ships with the viewer extras rather
+# 'collect_ignore_glob' can prevent. It therefore lives in this group of its own rather
 # than in 'test', so a job installing neither binding can still run the rest of the
-# suite.
+# suite; the viewer job requests it next to one of the 'pyqt6' / 'pyside6' extras.
 test-viewer = ['pytest-qt']
 
 [project]
